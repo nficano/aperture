@@ -4,4 +4,8 @@ declare module "@nuxt/schema" {
   interface NuxtConfig {
     aperture?: ApertureNuxtOptions;
   }
+
+  interface RuntimeConfig {
+    aperture?: ApertureNuxtOptions;
+  }
 }
