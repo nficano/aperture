@@ -13,7 +13,7 @@ Aperture is a domain-driven observability toolkit tailored for Nuxt and Node.js 
 ## Getting Started
 
 ```bash
-npm install @teachme/aperture
+npm install @nficano/aperture
 ```
 
 ### Nuxt Integration
@@ -22,13 +22,13 @@ npm install @teachme/aperture
 
 ```ts
 export default defineNuxtConfig({
-  modules: ['@teachme/aperture/nuxt'],
+  modules: ["@nficano/aperture/nuxt"],
   aperture: {
     environment: process.env.NODE_ENV,
-    defaultTags: { service: 'nuxt-app' },
+    defaultTags: { service: "nuxt-app" },
     domains: [
-      { name: 'auth', defaultImpact: 'reliability' },
-      { name: 'content', defaultImpact: 'engagement' }
+      { name: "auth", defaultImpact: "reliability" },
+      { name: "content", defaultImpact: "engagement" },
     ],
     providers: {
       console: true,
@@ -36,10 +36,10 @@ export default defineNuxtConfig({
         ? { dsn: process.env.SENTRY_DSN, tracesSampleRate: 1.0 }
         : false,
       datadog: process.env.DATADOG_API_KEY
-        ? { apiKey: process.env.DATADOG_API_KEY, service: 'nuxt-app' }
-        : false
-    }
-  }
+        ? { apiKey: process.env.DATADOG_API_KEY, service: "nuxt-app" }
+        : false,
+    },
+  },
 });
 ```
 
@@ -50,15 +50,15 @@ export default defineEventHandler(async (event) => {
   const { $apertureLogger } = event.context.nuxt;
 
   const authLogger = $apertureLogger
-    .withDomain('auth')
-    .withImpact('reliability')
+    .withDomain("auth")
+    .withImpact("reliability")
     .withTags({ route: event.path });
 
-  const instrument = instrumentApiCall(authLogger, 'POST /api/login');
+  const instrument = instrumentApiCall(authLogger, "POST /api/login");
 
   return instrument.run(async () => {
     // ... auth logic
-    return { status: 'ok' };
+    return { status: "ok" };
   });
 });
 ```
@@ -66,22 +66,25 @@ export default defineEventHandler(async (event) => {
 ### Node.js Service
 
 ```ts
-import { Aperture, ConsoleProvider, instrumentFunnel } from '@teachme/aperture';
+import { Aperture, ConsoleProvider, instrumentFunnel } from "@nficano/aperture";
 
 const aperture = new Aperture({
-  environment: process.env.NODE_ENV ?? 'development',
-  defaultTags: { service: 'checkout-service' },
-  domains: [{ name: 'ecommerce', defaultImpact: 'revenue' }]
+  environment: process.env.NODE_ENV ?? "development",
+  defaultTags: { service: "checkout-service" },
+  domains: [{ name: "ecommerce", defaultImpact: "revenue" }],
 });
 
 autowire();
 
-const logger = aperture.getLogger().withDomain('ecommerce');
+const logger = aperture.getLogger().withDomain("ecommerce");
 
 async function handleCheckout(orderId: string) {
-  return instrumentFunnel(logger, 'checkout-flow', { impact: 'revenue', tags: { orderId } }).run(async () => {
-    logger.info('Cart validated', { impact: 'engagement' });
-    logger.info('Payment authorized', { impact: 'revenue' });
+  return instrumentFunnel(logger, "checkout-flow", {
+    impact: "revenue",
+    tags: { orderId },
+  }).run(async () => {
+    logger.info("Cart validated", { impact: "engagement" });
+    logger.info("Payment authorized", { impact: "revenue" });
   });
 }
 
@@ -89,7 +92,10 @@ function autowire() {
   aperture.registerProvider(new ConsoleProvider());
   if (process.env.DATADOG_API_KEY) {
     aperture.registerProvider(
-      new DatadogProvider({ apiKey: process.env.DATADOG_API_KEY, service: 'checkout-service' })
+      new DatadogProvider({
+        apiKey: process.env.DATADOG_API_KEY,
+        service: "checkout-service",
+      })
     );
   }
 }
@@ -101,24 +107,33 @@ function autowire() {
 - Production: layer any combination of Firebase, Sentry, Datadog, or New Relic.
 
 ```ts
-const aperture = new Aperture({ environment: 'production' });
+const aperture = new Aperture({ environment: "production" });
 aperture.registerProvider(new ConsoleProvider({ enableColors: false }));
 aperture.registerProvider(new SentryProvider({ dsn: process.env.SENTRY_DSN }));
 aperture.registerProvider(
-  new DatadogProvider({ apiKey: process.env.DATADOG_API_KEY!, service: 'public-api' })
+  new DatadogProvider({
+    apiKey: process.env.DATADOG_API_KEY!,
+    service: "public-api",
+  })
 );
 ```
 
 ### Instruments Cheat-Sheet
 
 ```ts
-const journey = instrumentUserJourney(logger, 'onboarding', { impact: 'engagement' });
+const journey = instrumentUserJourney(logger, "onboarding", {
+  impact: "engagement",
+});
 await journey
-  .step({ step: 'start' })
-  .annotate({ plan: 'pro' })
+  .step({ step: "start" })
+  .annotate({ plan: "pro" })
   .run(async () => {
-    await instrumentApiCall(logger, 'POST /api/send-welcome').run(callWelcomeApi);
-    await instrumentConversion(logger, 'trial-to-paid', { impact: 'revenue' }).run(upgradeUser);
+    await instrumentApiCall(logger, "POST /api/send-welcome").run(
+      callWelcomeApi
+    );
+    await instrumentConversion(logger, "trial-to-paid", {
+      impact: "revenue",
+    }).run(upgradeUser);
   });
 ```
 
