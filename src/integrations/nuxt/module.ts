@@ -31,7 +31,9 @@ export default defineNuxtModule<ApertureNuxtOptions>({
       return;
     }
 
-    const resolver = createResolver((import.meta as ImportMeta & { url: string }).url);
+    const resolver = createResolver(
+      (import.meta as ImportMeta & { url: string }).url
+    );
     const runtimeConfig = nuxt.options.runtimeConfig;
 
     runtimeConfig.aperture = {
@@ -57,7 +59,7 @@ export default defineNuxtModule<ApertureNuxtOptions>({
           ...(nitroConfig.runtimeConfig.aperture ?? {}),
           ...(runtimeConfig.aperture ?? {}),
         };
-      },
+      }
     );
 
     addPlugin({
