@@ -1,0 +1,79 @@
+{
+  "name": "@teachme/aperture",
+  "version": "0.1.0",
+  "description": "Domain-driven observability toolkit for Nuxt apps and Node services.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./nuxt": {
+      "types": "./dist/integrations/nuxt/index.d.ts",
+      "import": "./dist/integrations/nuxt/index.js"
+    },
+    "./integrations/nuxt": {
+      "types": "./dist/integrations/nuxt/index.d.ts",
+      "import": "./dist/integrations/nuxt/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "@sentry/node": "^7.0.0",
+    "firebase-admin": "^12.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@sentry/node": {
+      "optional": true
+    },
+    "firebase-admin": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "c8": "^9.1.0",
+    "vitest": "^1.4.0"
+  },
+  "vitest": {
+    "environment": "node",
+    "setupFiles": [
+      "tests/setup.ts"
+    ],
+    "coverage": {
+      "provider": "c8",
+      "reportsDirectory": "coverage",
+      "reporter": [
+        "text",
+        "html",
+        "lcov"
+      ],
+      "include": [
+        "src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.spec.ts",
+        "dist/**",
+        "scripts/**"
+      ],
+      "lines": 0.95,
+      "functions": 0.95,
+      "branches": 0.9,
+      "statements": 0.95
+    }
+  },
+  "packageManager": "pnpm@9.13.2+sha512.88c9c3864450350e65a33587ab801acf946d7c814ed1134da4a924f6df5a2120fd36b46aab68f7cd1d413149112d53c7db3a4136624cfd00ff1846a0c6cef48a"
+}
