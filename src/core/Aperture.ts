@@ -57,7 +57,7 @@ export class Aperture {
     this.runtime = options.runtime;
 
     options.domains?.forEach((definition) =>
-      this.domainRegistry.register(definition),
+      this.domainRegistry.register(definition)
     );
     options.providers?.forEach((provider) => {
       this.registerProvider(provider);
@@ -82,14 +82,14 @@ export class Aperture {
         setupResult.catch((error) => {
           diagnosticConsole.error(
             `[Aperture] Failed to setup provider ${provider.name}`,
-            error,
+            error
           );
         });
       }
     } catch (error) {
       diagnosticConsole.error(
         `[Aperture] Failed to setup provider ${provider.name}`,
-        error,
+        error
       );
     }
 
@@ -103,7 +103,7 @@ export class Aperture {
    */
   removeProvider(name: string): void {
     const index = this.providers.findIndex(
-      (provider) => provider.name === name,
+      (provider) => provider.name === name
     );
     if (index >= 0) {
       const [provider] = this.providers.splice(index, 1);
@@ -112,7 +112,7 @@ export class Aperture {
         shutdownResult.catch((error) => {
           diagnosticConsole.error(
             `[Aperture] Failed to shutdown provider ${provider.name}`,
-            error,
+            error
           );
         });
       }
@@ -172,7 +172,7 @@ export class Aperture {
           ...(definition?.defaultTags ?? {}),
         },
       },
-      fn,
+      fn
     );
   }
 

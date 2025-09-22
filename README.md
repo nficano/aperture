@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="http://assets.nickficano.com/aperture-logo-dark.svg" />
+    <img src="http://assets.nickficano.com/aperture-logo-light.svg" alt="Aperture" width="438" height="94" />
+  </picture>
+</p>
+
 # Aperture
 
 Aperture is a domain-driven observability toolkit tailored for Nuxt and Node.js services. It unifies structured logging, instrumentation, and provider orchestration so teams can capture business context, impact, and customer journeys with minimal ceremony.
