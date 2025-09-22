@@ -2,13 +2,16 @@
 
 Aperture is a domain-driven observability toolkit tailored for Nuxt and Node.js services. It unifies structured logging, instrumentation, and provider orchestration so teams can capture business context, impact, and customer journeys with minimal ceremony.
 
+## Notice:
+
+**Aperture is still a work-in-progress. I don't suggest relying on it**
+
 ## Highlights
 
-- ✅ **Nuxt-first module** that injects `$aperture` and `$apertureLogger` into your app.
-- 🎯 **Domain + impact-aware logging**: scope every event to business domains and impact classes (revenue, engagement, performance, reliability).
-- 🧭 **User journey instruments**: trace funnels, API calls, and conversions with async-safe context propagation.
-- 🔌 **Pluggable providers**: console (rich dev output), Firebase, Sentry, Datadog, New Relic, or any HTTP endpoint.
-- 🧱 **Async context management**: leverage `AsyncLocalStorage` to keep tags, user traits, and instrumentation data across awaits.
+- **Domain + impact-aware logging**: scope every event to business domains and impact classes (revenue, engagement, performance, reliability).
+- **User journey instruments**: trace funnels, API calls, and conversions with async-safe context propagation.
+- **Pluggable providers**: console (rich dev output), Firebase, Sentry, Datadog, New Relic, or any HTTP endpoint.
+- **Async context management**: leverage `AsyncLocalStorage` to keep tags, user traits, and instrumentation data across awaits.
 
 ## Getting Started
 
