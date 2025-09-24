@@ -29,7 +29,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.0.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -67,7 +67,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.0.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -92,8 +92,8 @@ jobs:
 
       - name: Publish
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
           NPM_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
         run: |
-          # if publishing a scoped public package:
-          bun publish --access public
-          # otherwise: bun run publish
+          # publish scoped package as public using npm
+          npm publish --access public
