@@ -97,4 +97,4 @@ jobs:
         run: |
           # if publishing a scoped public package:
           bun publish
-          # otherwise: bun publish
+          # otherwise: bun run publish
