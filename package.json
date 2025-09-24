@@ -34,7 +34,8 @@
     "test:coverage": "vitest run --coverage",
     "version:patch": "COREPACK_ENABLE_STRICT=0 npm version patch && git push && git push --tags",
     "version:minor": "COREPACK_ENABLE_STRICT=0 npm version minor && git push && git push --tags",
-    "version:major": "COREPACK_ENABLE_STRICT=0 npm version major && git push && git push --tags"
+    "version:major": "COREPACK_ENABLE_STRICT=0 npm version major && git push && git push --tags",
+    "publish": "COREPACK_ENABLE_STRICT=0 npm publish"
   },
   "peerDependencies": {
     "@sentry/node": "^7.0.0",
