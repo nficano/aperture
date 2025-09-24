@@ -15,7 +15,9 @@ const GLOBAL_ALS_KEY = "__APERTURE_CONTEXT_STORAGE_ALS__" as const;
 
 function getOrCreateGlobalStorage(): StorageAdapter {
   const g = globalThis as unknown as Record<string, unknown>;
-  const hasALS = typeof (globalThis as { AsyncLocalStorage?: AsyncLocalConstructor }).AsyncLocalStorage === "function";
+  const hasALS =
+    typeof (globalThis as { AsyncLocalStorage?: AsyncLocalConstructor })
+      .AsyncLocalStorage === "function";
   if (hasALS) {
     const existingAls = g[GLOBAL_ALS_KEY] as StorageAdapter | undefined;
     if (existingAls) return existingAls;
@@ -43,7 +45,9 @@ type AsyncLocalConstructor = new <Store>() => {
  * @returns {StorageAdapter} Adapter providing run/getStore helpers for context propagation.
  */
 function createALSStorage(): StorageAdapter {
-  const AsyncLocal = (globalThis as { AsyncLocalStorage?: AsyncLocalConstructor }).AsyncLocalStorage!;
+  const AsyncLocal = (
+    globalThis as { AsyncLocalStorage?: AsyncLocalConstructor }
+  ).AsyncLocalStorage!;
   const instance = new AsyncLocal<ApertureContext>();
   return {
     run: (value, fn) => instance.run(value, fn),
@@ -63,7 +67,7 @@ function createStackStorage(): StorageAdapter {
       }
     },
     getStore(): ApertureContext | undefined {
-      return stack.length > 0 ? stack.at(-1) : undefined;
+      return stack.length > 0 ? stack[stack.length - 1] : undefined;
     },
   };
 }
@@ -136,10 +140,7 @@ export const ContextManager = {
    * @param {() => T} fn - Callback executed while the user context is active.
    * @returns {T} The callback result.
    */
-  withUser<T>(
-    user: NonNullable<ApertureContext["user"]>,
-    fn: () => T,
-  ): T {
+  withUser<T>(user: NonNullable<ApertureContext["user"]>, fn: () => T): T {
     return ContextManager.runWithContext({ user }, fn);
   },
 

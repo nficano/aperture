@@ -46,7 +46,7 @@ export class DatadogProvider extends HttpProvider {
    */
   private static transform(
     event: LogEvent | MetricEvent,
-    options: DatadogProviderOptions,
+    options: DatadogProviderOptions
   ): DatadogPayload {
     const tags = {
       ...options.tags,
@@ -81,7 +81,7 @@ export class DatadogProvider extends HttpProvider {
 
     if ("error" in event && event.error) {
       payload.attributes = {
-        ...payload.attributes,
+        ...(payload.attributes || {}),
         error: {
           message: event.error.message,
           stack: event.error.stack,
