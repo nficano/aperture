@@ -29,6 +29,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && cp src/integrations/nuxt/nuxt-config.d.ts dist/integrations/nuxt/",
     "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "version:patch": "COREPACK_ENABLE_STRICT=0 npm version patch && git push && git push --tags",

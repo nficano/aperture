@@ -67,7 +67,7 @@ function createStackStorage(): StorageAdapter {
       }
     },
     getStore(): ApertureContext | undefined {
-      return stack.length > 0 ? stack[stack.length - 1] : undefined;
+      return stack.length > 0 ? stack.at(-1) : undefined;
     },
   };
 }
