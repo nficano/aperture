@@ -59,6 +59,14 @@ export class DatadogProvider extends HttpProvider {
       .map(([key, value]) => `${key}:${String(value)}`)
       .join(",");
 
+    const attributes: Record<string, unknown> = {
+      ...event.context,
+      instrumentation: event.instrumentation,
+      runtime: (event as LogEvent).runtime,
+      value: "value" in event ? event.value : undefined,
+      unit: "unit" in event ? event.unit : undefined,
+    };
+
     const payload: DatadogPayload = {
       ddsource: options.ddsource ?? "aperture",
       service: options.service,
@@ -70,22 +78,13 @@ export class DatadogProvider extends HttpProvider {
         event.timestamp instanceof Date
           ? event.timestamp.toISOString()
           : event.timestamp,
-      attributes: {
-        ...event.context,
-        instrumentation: event.instrumentation,
-        runtime: (event as LogEvent).runtime,
-        value: "value" in event ? event.value : undefined,
-        unit: "unit" in event ? event.unit : undefined,
-      },
+      attributes,
     };
 
     if ("error" in event && event.error) {
-      payload.attributes = {
-        ...payload.attributes,
-        error: {
-          message: event.error.message,
-          stack: event.error.stack,
-        },
+      attributes.error = {
+        message: event.error.message,
+        stack: event.error.stack,
       };
     }
 
