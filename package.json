@@ -97,8 +97,5 @@
       "statements": 0.95
     }
   },
-  "dependencies": {
-    "@nficano/aperture": "."
-  },
   "packageManager": "bun@1.0.0"
 }
