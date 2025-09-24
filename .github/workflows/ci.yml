@@ -82,7 +82,7 @@ jobs:
           cat > .npmrc <<'RC'
           registry=https://registry.npmjs.org/
           always-auth=true
-          //registry.npmjs.org/:_authToken=${NPM_TOKEN}
+          //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
           RC
 
       - name: Install dependencies
@@ -93,7 +93,7 @@ jobs:
 
       - name: Publish
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
         run: |
           # if publishing a scoped public package:
           bun publish --access public
