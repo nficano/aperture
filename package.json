@@ -1,6 +1,6 @@
 {
   "name": "@nficano/aperture",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Domain-driven observability toolkit for Nuxt apps and Node services.",
   "license": "MIT",
   "type": "module",
@@ -30,7 +30,10 @@
     "build": "tsc -p tsconfig.json && cp src/integrations/nuxt/nuxt-config.d.ts dist/integrations/nuxt/",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "version:patch": "COREPACK_ENABLE_STRICT=0 npm version patch && git push && git push --tags",
+    "version:minor": "COREPACK_ENABLE_STRICT=0 npm version minor && git push && git push --tags",
+    "version:major": "COREPACK_ENABLE_STRICT=0 npm version major && git push && git push --tags"
   },
   "peerDependencies": {
     "@sentry/node": "^7.0.0",
