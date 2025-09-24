@@ -105,4 +105,51 @@ describe('HttpProvider', () => {
     expect(clearIntervalMock).toHaveBeenCalledWith(handle);
     expect(fetchMock).toHaveBeenCalled();
   });
+
+  it('should invoke scheduled flush callback when interval fires', async () => {
+    // Arrange
+    const fetchMock = vi.fn().mockResolvedValue(undefined);
+    const handle = { unref: vi.fn() };
+    const setIntervalMock = vi.fn().mockReturnValue(handle);
+    vi.stubGlobal('fetch', fetchMock as unknown);
+    vi.stubGlobal('setInterval', setIntervalMock as unknown);
+    vi.resetModules();
+    const { HttpProvider } = await import(modulePath);
+    const provider = new HttpProvider({
+      name: 'http',
+      endpoint: 'https://example.test/logs',
+      flushIntervalMs: 100,
+    });
+
+    const event = createLogEvent();
+    provider.log(event);
+
+    // Act: trigger the scheduled handler manually
+    const handler = setIntervalMock.mock.calls[0]?.[0] as () => void;
+    handler();
+
+    // Assert
+    expect(fetchMock).toHaveBeenCalledWith('https://example.test/logs', expect.any(Object));
+  });
+
+  it('should serialize non-Date timestamps without conversion', async () => {
+    // Arrange
+    const fetchMock = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('fetch', fetchMock as unknown);
+    vi.resetModules();
+    const { HttpProvider } = await import(modulePath);
+    const provider = new HttpProvider({ name: 'http', endpoint: 'https://example.test' });
+
+    const numericTs = 1700000000000;
+    const event = createLogEvent({ timestamp: numericTs as unknown as Date });
+
+    // Act
+    provider.log(event);
+    await provider.flush();
+
+    // Assert
+    const body = fetchMock.mock.calls[0]?.[1]?.body as string;
+    const payload = JSON.parse(body)[0];
+    expect(payload.timestamp).toBe(numericTs);
+  });
 });

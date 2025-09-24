@@ -10,7 +10,28 @@ type StorageAdapter = {
   getStore(): ApertureContext | undefined;
 };
 
-const storage = createStorage();
+const GLOBAL_STACK_KEY = "__APERTURE_CONTEXT_STORAGE_STACK__" as const;
+const GLOBAL_ALS_KEY = "__APERTURE_CONTEXT_STORAGE_ALS__" as const;
+
+function getOrCreateGlobalStorage(): StorageAdapter {
+  const g = globalThis as unknown as Record<string, unknown>;
+  const hasALS = typeof (globalThis as { AsyncLocalStorage?: AsyncLocalConstructor }).AsyncLocalStorage === "function";
+  if (hasALS) {
+    const existingAls = g[GLOBAL_ALS_KEY] as StorageAdapter | undefined;
+    if (existingAls) return existingAls;
+    const createdAls = createALSStorage();
+    g[GLOBAL_ALS_KEY] = createdAls;
+    return createdAls;
+  }
+
+  const existingStack = g[GLOBAL_STACK_KEY] as StorageAdapter | undefined;
+  if (existingStack) return existingStack;
+  const createdStack = createStackStorage();
+  g[GLOBAL_STACK_KEY] = createdStack;
+  return createdStack;
+}
+
+const storage = getOrCreateGlobalStorage();
 
 type AsyncLocalConstructor = new <Store>() => {
   run<Result>(store: Store, fn: () => Result): Result;
@@ -21,42 +42,18 @@ type AsyncLocalConstructor = new <Store>() => {
  * Creates a storage adapter backed by AsyncLocalStorage when available or a stack fallback.
  * @returns {StorageAdapter} Adapter providing run/getStore helpers for context propagation.
  */
-function createStorage(): StorageAdapter {
-  const AsyncLocal = (
-    globalThis as {
-      AsyncLocalStorage?: AsyncLocalConstructor;
-    }
-  ).AsyncLocalStorage;
-
-  if (typeof AsyncLocal === "function") {
-    const instance = new AsyncLocal<ApertureContext>();
-    return {
-      /**
-       * Executes a callback with a scoped store using AsyncLocalStorage.
-       * @template T
-       * @param {ApertureContext} value - Context value to make active.
-       * @param {() => T} fn - Callback executed within the scope.
-       * @returns {T} The callback result.
-       */
-      run: (value, fn) => instance.run(value, fn),
-      /**
-       * Retrieves the current AsyncLocalStorage store.
-       * @returns {ApertureContext | undefined} Current context or undefined.
-       */
-      getStore: () => instance.getStore(),
-    };
-  }
-
-  const stack: ApertureContext[] = [];
-
+function createALSStorage(): StorageAdapter {
+  const AsyncLocal = (globalThis as { AsyncLocalStorage?: AsyncLocalConstructor }).AsyncLocalStorage!;
+  const instance = new AsyncLocal<ApertureContext>();
   return {
-    /**
-     * Executes a callback while pushing the provided context onto a stack.
-     * @template T
-     * @param {ApertureContext} value - Context to push for the duration of the callback.
-     * @param {() => T} fn - Callback that runs while the context is active.
-     * @returns {T} The callback result.
-     */
+    run: (value, fn) => instance.run(value, fn),
+    getStore: () => instance.getStore(),
+  };
+}
+
+function createStackStorage(): StorageAdapter {
+  const stack: ApertureContext[] = [];
+  return {
     run<T>(value: ApertureContext, fn: () => T): T {
       stack.push(value);
       try {
@@ -65,10 +62,6 @@ function createStorage(): StorageAdapter {
         stack.pop();
       }
     },
-    /**
-     * Reads the currently active context from the stack fallback.
-     * @returns {ApertureContext | undefined} Current context or undefined when none set.
-     */
     getStore(): ApertureContext | undefined {
       return stack.length ? stack[stack.length - 1] : undefined;
     },
@@ -91,10 +84,13 @@ export class ContextManager {
     const merged: ApertureContext = {
       ...current,
       ...context,
+      // Ensure tags are merged shallowly
       tags: {
         ...(current.tags ?? {}),
         ...(context.tags ?? {}),
       },
+      // Ensure instrumentation from the new context is preserved
+      instrumentation: context.instrumentation ?? current.instrumentation,
     };
 
     return storage.run(merged, fn);
@@ -165,10 +161,13 @@ export class ContextManager {
     return {
       ...current,
       ...context,
+      // Merge tags from both sources
       tags: {
         ...(current.tags ?? {}),
         ...(context.tags ?? {}),
       },
+      // Prefer explicitly provided instrumentation, otherwise keep current
+      instrumentation: context.instrumentation ?? current.instrumentation,
     };
   }
 }

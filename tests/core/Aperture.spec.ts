@@ -149,8 +149,7 @@ describe('Aperture', () => {
     try {
       // Act
       aperture.removeProvider('temp');
-      await Promise.resolve();
-      await Promise.resolve();
+      await new Promise((resolve) => setImmediate(resolve));
     } finally {
       restore();
     }
@@ -177,6 +176,23 @@ describe('Aperture', () => {
     // Assert
     expect(flushOne).toHaveBeenCalled();
     expect(flushTwo).toHaveBeenCalled();
+  });
+
+  it('should invoke shutdown on all providers when shutting down aperture', async () => {
+    // Arrange
+    const Aperture = await loadAperture();
+    const shutdownOne = vi.fn().mockResolvedValue(undefined);
+    const shutdownTwo = vi.fn().mockReturnValue(undefined);
+    const aperture = new Aperture();
+    aperture.registerProvider({ name: 'one', shutdown: shutdownOne } as any);
+    aperture.registerProvider({ name: 'two', shutdown: shutdownTwo } as any);
+
+    // Act
+    await aperture.shutdown();
+
+    // Assert
+    expect(shutdownOne).toHaveBeenCalled();
+    expect(shutdownTwo).toHaveBeenCalled();
   });
 
   it('should apply domain defaults when running within a domain scope', async () => {

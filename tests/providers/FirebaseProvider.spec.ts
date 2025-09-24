@@ -77,4 +77,91 @@ describe('FirebaseProvider', () => {
       vi.unmock('firebase-admin');
     }
   });
+
+  it('should use existing app when firebase-admin has an initialized app', async () => {
+    // Arrange
+    const add = vi.fn().mockResolvedValue(undefined);
+    const collection = vi.fn().mockReturnValue({ add });
+    const firestoreInstance = { collection };
+    const firestore = vi.fn(() => firestoreInstance);
+    const existingApp = { firestore };
+    vi.doMock(
+      'firebase-admin',
+      () => ({ default: { apps: [existingApp] } }),
+      { virtual: true },
+    );
+    vi.resetModules();
+    const { FirebaseProvider } = await import(modulePath);
+    const provider = new FirebaseProvider({ collection: 'events' });
+
+    try {
+      // Act
+      await provider.setup();
+      await provider.log(createLogEvent());
+
+      // Assert
+      expect(firestore).toHaveBeenCalled();
+      expect(collection).toHaveBeenCalledWith('events');
+      expect(add).toHaveBeenCalled();
+    } finally {
+      vi.unmock('firebase-admin');
+    }
+  });
+
+  it('should not initialize when provided app lacks firestore and should no-op', async () => {
+    // Arrange
+    const app = {} as any; // no firestore()
+    vi.resetModules();
+    const { FirebaseProvider } = await import(modulePath);
+    const provider = new FirebaseProvider({ app });
+
+    // Act
+    await provider.setup();
+    await provider.log(createLogEvent());
+    await provider.metric(createMetricEvent());
+    provider.flush();
+    provider.shutdown();
+
+    // Assert — nothing to assert other than absence of crashes
+    expect(true).toBe(true);
+  });
+
+  it('should preserve non-Date timestamps during serialization', async () => {
+    // Arrange
+    const add = vi.fn().mockResolvedValue(undefined);
+    const collection = vi.fn().mockReturnValue({ add });
+    const firestore = vi.fn(() => ({ collection }));
+    const app = { firestore } as any;
+    vi.resetModules();
+    const { FirebaseProvider } = await import(modulePath);
+    const provider = new FirebaseProvider({ app, collection: 'custom' });
+    await provider.setup();
+
+    const ts = 1700000000000;
+    const event = createLogEvent({ timestamp: ts as unknown as Date });
+
+    // Act
+    await provider.log(event);
+
+    // Assert
+    expect(add).toHaveBeenCalledWith(expect.objectContaining({ timestamp: ts }));
+  });
+
+  it('should fall back to NOOP logger when console is unavailable', async () => {
+    // Arrange
+    const originalConsole = globalThis.console as any;
+    // @ts-expect-error - intentionally unset for test
+    delete (globalThis as any).console;
+    vi.resetModules();
+    const { FirebaseProvider } = await import(modulePath);
+
+    try {
+      const provider = new FirebaseProvider({ app: undefined });
+      await provider.setup();
+      await provider.log(createLogEvent());
+      expect(true).toBe(true);
+    } finally {
+      globalThis.console = originalConsole;
+    }
+  });
 });

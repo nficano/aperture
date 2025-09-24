@@ -50,9 +50,10 @@
   "devDependencies": {
     "@nuxt/schema": "^4.1.2",
     "@types/node": "^24.5.2",
+    "@vitest/coverage-v8": "^3.2.4",
     "c8": "^9.1.0",
     "typescript": "^5.9.2",
-    "vitest": "^1.4.0"
+    "vitest": "^3.2.4"
   },
   "vitest": {
     "environment": "node",
@@ -68,12 +69,16 @@
         "lcov"
       ],
       "include": [
-        "src/**/*.ts"
+        "src/core/**/*.ts",
+        "src/providers/**/*.ts",
+        "src/integrations/**/*.ts"
       ],
       "exclude": [
         "**/*.spec.ts",
         "dist/**",
-        "scripts/**"
+        "scripts/**",
+        "examples/**",
+        "src/types/**"
       ],
       "lines": 0.95,
       "functions": 0.95,

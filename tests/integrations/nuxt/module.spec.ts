@@ -85,4 +85,36 @@ describe('Nuxt module', () => {
       vi.unmock('@nuxt/kit');
     }
   });
+
+  it('should default domains/providers and merge nitro config when undefined', async () => {
+    // Arrange
+    const addPlugin = vi.fn();
+    const resolve = vi.fn().mockReturnValue('/plugin-path');
+    const hook = vi.fn();
+
+    vi.doMock('@nuxt/kit', () => ({
+      defineNuxtModule: (config: any) => config,
+      addPlugin,
+      createResolver: () => ({ resolve }),
+    }), { virtual: true });
+    vi.resetModules();
+    const module = (await import(modulePath)).default;
+    const nuxt = { options: { runtimeConfig: {} }, hook } as any;
+
+    // Act
+    module.setup({ enabled: true }, nuxt);
+    const nitroHandler = hook.mock.calls[0]?.[1];
+    const nitroConfig: any = {};
+    nitroHandler?.(nitroConfig);
+
+    // Assert
+    expect(nuxt.options.runtimeConfig.aperture).toMatchObject({
+      domains: [],
+      providers: {},
+    });
+    expect(nitroConfig.runtimeConfig.aperture).toMatchObject({
+      domains: [],
+      providers: {},
+    });
+  });
 });

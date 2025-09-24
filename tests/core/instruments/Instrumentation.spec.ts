@@ -1,11 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import { ContextManager } from '../../../src/core/context/ContextManager.js';
-import type { Logger } from '../../../src/types/index.js';
+import { describe, it, expect, vi } from "vitest";
+import { ContextManager } from "../../../src/core/context/ContextManager.js";
+import type { Logger } from "../../../src/types/index.js";
 
-const modulePath = '../../../src/core/instruments/Instrumentation.js';
+const modulePath = "../../../src/core/instruments/Instrumentation.js";
 
 type FakeLogger = Logger & {
-  child: ReturnType<typeof createFakeLogger>['child'];
+  child: ReturnType<typeof createFakeLogger>["child"];
 };
 
 const createFakeLogger = () => {
@@ -35,16 +35,16 @@ const createFakeLogger = () => {
   return { base, childLogger, childInfo, childError };
 };
 
-describe('Instrumentation', () => {
-  it('should run instrumented function when auto logging is enabled', async () => {
+describe("Instrumentation", () => {
+  it("should run instrumented function when auto logging is enabled", async () => {
     // Arrange
     const { base, childInfo } = createFakeLogger();
     const { instrumentUserJourney } = await import(modulePath);
-    const handle = instrumentUserJourney<number>(base, 'checkout', {
-      domain: 'payments',
-      impact: 'engagement',
-      tags: { stage: 'beta' },
-      metadata: { feature: 'checkout' },
+    const handle = instrumentUserJourney<number>(base, "checkout", {
+      domain: "payments",
+      impact: "engagement",
+      tags: { stage: "beta" },
+      metadata: { feature: "checkout" },
     });
 
     // Act
@@ -53,85 +53,158 @@ describe('Instrumentation', () => {
     // Assert
     expect(result).toBe(42);
     expect(base.child).toHaveBeenCalled();
-    expect(childInfo).toHaveBeenCalledWith('user-journey:checkout started', {
-      impact: 'engagement',
+    expect(childInfo).toHaveBeenCalledWith("user-journey:checkout started", {
+      impact: "engagement",
     });
-    expect(childInfo).toHaveBeenCalledWith('user-journey:checkout success', {
-      impact: 'engagement',
+    expect(childInfo).toHaveBeenCalledWith("user-journey:checkout success", {
+      impact: "engagement",
       context: expect.objectContaining({ durationMs: expect.any(Number) }),
     });
   });
 
-  it('should emit error log when instrumented function throws', async () => {
+  it("should emit error log when instrumented function throws", async () => {
     // Arrange
     const { base, childError } = createFakeLogger();
     const { instrumentApiCall } = await import(modulePath);
-    const handle = instrumentApiCall(base, 'GET /orders');
-    const failure = new Error('request failed');
+    const handle = instrumentApiCall(base, "GET /orders");
+    const failure = new Error("request failed");
 
     // Act / Assert
     await expect(
       handle.run(() => {
         throw failure;
-      }),
+      })
     ).rejects.toThrow(failure);
 
-    expect(childError).toHaveBeenCalledWith('api-call:GET /orders error', {
+    expect(childError).toHaveBeenCalledWith("api-call:GET /orders error", {
       impact: undefined,
       error: failure,
       context: expect.objectContaining({ durationMs: expect.any(Number) }),
     });
   });
 
-  it('should support manual steps and finish when auto logging disabled', async () => {
+  it("should support manual steps and finish when auto logging disabled", async () => {
     // Arrange
     const { base, childInfo, childError } = createFakeLogger();
     const { instrumentFunnel } = await import(modulePath);
-    const handle = instrumentFunnel(base, 'signup', {
+    const handle = instrumentFunnel(base, "signup", {
       autoLog: false,
-      tags: { initial: 'yes' },
+      tags: { initial: "yes" },
     });
 
-    handle.annotate({ extra: 'value' }).step({ step: 'validate', tags: { phase: 'mid' } });
+    handle
+      .annotate({ extra: "value" })
+      .step({ step: "validate", tags: { phase: "mid" } });
 
     // Act
     await handle.run(() => {
       const context = ContextManager.getContext();
-      expect(context.tags).toEqual({ initial: 'yes', extra: 'value', phase: 'mid' });
-      handle.finish('success', { processed: true });
-      return 'ok';
+      expect(context.tags).toEqual({
+        initial: "yes",
+        extra: "value",
+        phase: "mid",
+      });
+      handle.finish("success", { processed: true });
+      return "ok";
     });
 
-    const output = handle.success('done', { count: 1 });
+    const output = handle.success("done", { count: 1 });
 
     // Assert
-    expect(output).toBe('done');
+    expect(output).toBe("done");
     expect(childInfo).not.toHaveBeenCalled();
     expect(childError).not.toHaveBeenCalled();
   });
 
-  it('should use Date.now fallback when performance API is unavailable', async () => {
+  it("should use Date.now fallback when performance API is unavailable", async () => {
     // Arrange
     vi.resetModules();
-    vi.stubGlobal('performance', undefined as unknown);
-    const nowSpy = vi.spyOn(Date, 'now');
+    vi.stubGlobal("performance", undefined as unknown);
+    const nowSpy = vi.spyOn(Date, "now");
     nowSpy.mockReturnValueOnce(1_000);
     nowSpy.mockReturnValueOnce(1_150);
     const { instrumentConversion } = await import(modulePath);
     const { base, childInfo } = createFakeLogger();
 
     // Act
-    const handle = instrumentConversion(base, 'purchase');
+    const handle = instrumentConversion(base, "purchase");
     handle.success();
 
     // Assert
     const successCall = childInfo.mock.calls.find(
-      ([message]) => message === 'conversion:purchase success',
+      ([message]) => message === "conversion:purchase success"
     );
     expect(successCall?.[1]).toEqual({
       impact: undefined,
       context: { durationMs: 150 },
     });
     expect(nowSpy).toHaveBeenCalled();
+  });
+
+  it("should emit lifecycle log when finish called with custom status", async () => {
+    // Arrange
+    const { base, childInfo } = createFakeLogger();
+    const { instrumentUserJourney } = await import(modulePath);
+    const handle = instrumentUserJourney(base, "onboarding", {
+      tags: { stage: "initial" },
+    });
+
+    // Act
+    handle.finish("cancelled", { reason: "user" });
+
+    // Assert
+    expect(childInfo).toHaveBeenCalledWith(
+      "user-journey:onboarding cancelled",
+      {
+        impact: undefined,
+        context: expect.objectContaining({
+          durationMs: expect.any(Number),
+          reason: "user",
+        }),
+      }
+    );
+  });
+
+  it("should execute withInstrument and restore context afterwards", async () => {
+    // Arrange
+    const { base, childInfo } = createFakeLogger();
+    const { withInstrument } = await import(modulePath);
+
+    // Act
+    const result = await withInstrument(
+      base,
+      "GET /status",
+      "api-call",
+      () => {
+        const scope = ContextManager.getContext();
+        expect(scope.instrumentation?.name).toBe("GET /status");
+        expect(scope.instrumentation?.instrumentType).toBe("api-call");
+        return 204;
+      },
+      { domain: "status", impact: "reliability" }
+    );
+
+    // Assert
+    expect(result).toBe(204);
+    expect(childInfo).toHaveBeenCalledWith("api-call:GET /status success", {
+      impact: "reliability",
+      context: expect.objectContaining({ durationMs: expect.any(Number) }),
+    });
+    expect(ContextManager.getContext()).toEqual({});
+  });
+
+  it("should call step method with autoLog enabled", async () => {
+    // Arrange
+    const { base, childInfo } = createFakeLogger();
+    const { instrumentFunnel } = await import(modulePath);
+    const handle = instrumentFunnel(base, "signup", { autoLog: true });
+
+    // Act
+    handle.step({ step: "validate", tags: { phase: "mid" } });
+
+    // Assert
+    expect(childInfo).toHaveBeenCalledWith("funnel:signup step:validate", {
+      tags: { phase: "mid" },
+    });
   });
 });

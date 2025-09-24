@@ -29,6 +29,150 @@ describe('ConsoleProvider', () => {
     }
   });
 
+  it('should include instrumentation and error in development output', async () => {
+    // Arrange
+    const stub = stubConsole();
+    vi.resetModules();
+    const { ConsoleProvider } = await import(modulePath);
+
+    try {
+      const provider = new ConsoleProvider();
+      provider.setup({ environment: 'development' } as any);
+
+      const error = new Error('kaboom');
+      const event = createLogEvent({
+        instrumentation: { sdk: 'aperture', version: '1.0.0' },
+        error,
+      });
+
+      // Act
+      provider.log(event);
+
+      // Assert
+      const line = String(stub.calls.log[0][0]);
+      expect(line).toContain('instrument=');
+      expect(line).toContain('error=');
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('should handle string instrumentation via fast-path render', async () => {
+    // Arrange
+    const stub = stubConsole();
+    vi.resetModules();
+    const { ConsoleProvider } = await import(modulePath);
+
+    try {
+      const provider = new ConsoleProvider();
+      provider.setup({ environment: 'development' } as any);
+      const event = createLogEvent({ instrumentation: 'runtime:node' } as any);
+
+      // Act
+      provider.log(event);
+
+      // Assert
+      const line = String(stub.calls.log[0][0]);
+      expect(line).toContain('instrument=runtime:node');
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('should render tags even when JSON serialization fails', async () => {
+    // Arrange
+    const stub = stubConsole();
+    vi.resetModules();
+    const { ConsoleProvider } = await import(modulePath);
+
+    try {
+      const provider = new ConsoleProvider();
+      provider.setup({ environment: 'development' } as any);
+
+      // BigInt in an object will cause JSON.stringify to throw
+      const event = createLogEvent({ tags: { bad: BigInt(1) as unknown as number } });
+
+      // Act
+      provider.log(event);
+
+      // Assert
+      const line = String(stub.calls.log[0][0]);
+      expect(line).toContain('tags=');
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('should disable colors when enableColors=false', async () => {
+    // Arrange
+    const stub = stubConsole();
+    vi.resetModules();
+    const { ConsoleProvider } = await import(modulePath);
+
+    try {
+      const provider = new ConsoleProvider({ enableColors: false });
+      provider.setup({ environment: 'development' } as any);
+
+      // Act
+      provider.log(createLogEvent());
+
+      // Assert
+      const line = String(stub.calls.log[0][0]);
+      expect(line).toContain('[INFO]');
+      expect(line).not.toContain('\u001B');
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('should format metrics in development with tags and impact', async () => {
+    // Arrange
+    const stub = stubConsole();
+    vi.resetModules();
+    const { ConsoleProvider } = await import(modulePath);
+
+    try {
+      const provider = new ConsoleProvider();
+      provider.setup({ environment: 'development' } as any);
+
+      // Act
+      provider.metric(
+        createMetricEvent({ tags: { request: 'r1' }, impact: 'performance' }),
+      );
+
+      // Assert
+      const line = String(stub.calls.log[0][0]);
+      expect(line).toContain('[METRIC]');
+      expect(line).toContain('impact=performance');
+      expect(line).toContain('tags=');
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('should not crash when console is unavailable (fallback console)', async () => {
+    // Arrange
+    const originalConsole = globalThis.console as any;
+    // Remove console before module import to exercise fallback
+    // @ts-expect-error - intentionally unset for test
+    delete (globalThis as any).console;
+    vi.resetModules();
+    const { ConsoleProvider } = await import(modulePath);
+
+    try {
+      const provider = new ConsoleProvider();
+      provider.setup({ environment: 'development' } as any);
+      provider.log(createLogEvent());
+      provider.metric(createMetricEvent());
+      provider.flush();
+      provider.shutdown();
+      // If no throw, fallback worked
+      expect(true).toBe(true);
+    } finally {
+      globalThis.console = originalConsole;
+    }
+  });
+
   it('should render readable output when environment is development', async () => {
     // Arrange
     const stub = stubConsole();

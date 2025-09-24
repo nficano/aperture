@@ -9,6 +9,11 @@
 
 Aperture is a domain-driven observability toolkit tailored for Nuxt and Node.js services. It unifies structured logging, instrumentation, and provider orchestration so teams can capture business context, impact, and customer journeys with minimal ceremony.
 
+[![npm version](https://img.shields.io/npm/v/%40nficano%2Faperture)](https://www.npmjs.com/package/@nficano/aperture)
+[![npm downloads](https://img.shields.io/npm/dm/%40nficano%2Faperture)](https://www.npmjs.com/package/@nficano/aperture)
+[![types](https://img.shields.io/npm/types/%40nficano%2Faperture)](https://www.npmjs.com/package/@nficano/aperture)
+[![node](https://img.shields.io/node/v/%40nficano%2Faperture)](package.json)
+
 ## Notice:
 
 **Aperture is still a work-in-progress. I don't suggest relying on it**

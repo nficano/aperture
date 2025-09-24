@@ -217,4 +217,86 @@ describe('SentryProvider', () => {
       vi.unmock('@sentry/node');
     }
   });
+
+  it('should map log levels correctly (debug, warn, error)', async () => {
+    // Arrange
+    const captureMessage = vi.fn();
+    const sentryModule = {
+      init: vi.fn(),
+      isInitialized: () => true,
+      captureException: vi.fn(),
+      captureMessage,
+      captureEvent: vi.fn(),
+      flush: vi.fn(),
+      close: vi.fn(),
+    };
+
+    vi.doMock('@sentry/node', () => sentryModule, { virtual: true });
+    vi.resetModules();
+    const { SentryProvider } = await import(modulePath);
+    const provider = new SentryProvider();
+
+    try {
+      await provider.setup({ environment: 'test' });
+
+      // Act
+      provider.log(createLogEvent({ level: 'debug' }));
+      provider.log(createLogEvent({ level: 'warn' }));
+      provider.log(createLogEvent({ level: 'error' }));
+
+      // Assert
+      expect(captureMessage).toHaveBeenNthCalledWith(
+        1,
+        'test-message',
+        expect.objectContaining({ level: 'debug' }),
+      );
+      expect(captureMessage).toHaveBeenNthCalledWith(
+        2,
+        'test-message',
+        expect.objectContaining({ level: 'warning' }),
+      );
+      expect(captureMessage).toHaveBeenNthCalledWith(
+        3,
+        'test-message',
+        expect.objectContaining({ level: 'error' }),
+      );
+    } finally {
+      vi.unmock('@sentry/node');
+    }
+  });
+
+  it('should compute metric timestamp from Date.now when timestamp is not a Date', async () => {
+    // Arrange
+    const captureEvent = vi.fn();
+    const sentryModule = {
+      init: vi.fn(),
+      isInitialized: () => true,
+      captureException: vi.fn(),
+      captureMessage: vi.fn(),
+      captureEvent,
+      flush: vi.fn(),
+      close: vi.fn(),
+    };
+
+    vi.doMock('@sentry/node', () => sentryModule, { virtual: true });
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000); // fixed ms
+    vi.resetModules();
+    const { SentryProvider } = await import(modulePath);
+    const provider = new SentryProvider();
+
+    try {
+      await provider.setup({ environment: 'test' });
+
+      // Act
+      provider.metric(createMetricEvent({ timestamp: 123 as unknown as Date }));
+
+      // Assert
+      expect(captureEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ timestamp: Math.floor(1700000000000 / 1000) }),
+      );
+    } finally {
+      vi.unmock('@sentry/node');
+      (Date.now as any).mockRestore?.();
+    }
+  });
 });
