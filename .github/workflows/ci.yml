@@ -96,5 +96,5 @@ jobs:
           NPM_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
         run: |
           # if publishing a scoped public package:
-          bun publish
+          bun publish --access public
           # otherwise: bun run publish
