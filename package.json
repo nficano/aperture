@@ -1,6 +1,6 @@
 {
   "name": "@nficano/aperture",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "description": "Domain-driven observability toolkit for Nuxt apps and Node services.",
   "license": "MIT",
   "type": "module",
