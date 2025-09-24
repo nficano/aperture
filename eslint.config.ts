@@ -52,6 +52,7 @@ const customUnicornRules = {
     "unicorn/prevent-abbreviations": "off",
     "unicorn/no-null": "off",
     "unicorn/no-nested-ternary": "off",
+    "unicorn/no-useless-fallbacks": "off",
   },
 };
 
