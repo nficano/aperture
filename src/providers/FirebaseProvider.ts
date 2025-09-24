@@ -14,7 +14,7 @@ type Logger = {
 
 const GLOBAL_LOGGER: Logger =
   (globalThis as unknown as { console?: Logger }).console ?? ({
-    warn: () => undefined,
+    warn: () => {},
   } satisfies Logger);
 
 /**

@@ -1,8 +1,5 @@
 import { defineNuxtModule, addPlugin, createResolver } from "@nuxt/kit";
-import type {
-  ApertureNuxtOptions,
-  ApertureNuxtProviderOptions,
-} from "../../types/index.js";
+import type { ApertureNuxtOptions } from "../../types/index.js";
 
 export type {
   ApertureNuxtOptions,
@@ -37,7 +34,7 @@ export default defineNuxtModule<ApertureNuxtOptions>({
     const runtimeConfig = nuxt.options.runtimeConfig;
 
     runtimeConfig.aperture = {
-      ...(runtimeConfig.aperture ?? {}),
+      ...runtimeConfig.aperture,
       environment: options.environment,
       defaultTags: options.defaultTags,
       release: options.release,
@@ -56,8 +53,8 @@ export default defineNuxtModule<ApertureNuxtOptions>({
       (nitroConfig) => {
         nitroConfig.runtimeConfig = nitroConfig.runtimeConfig || {};
         nitroConfig.runtimeConfig.aperture = {
-          ...(nitroConfig.runtimeConfig.aperture ?? {}),
-          ...(runtimeConfig.aperture ?? {}),
+          ...nitroConfig.runtimeConfig.aperture,
+          ...runtimeConfig.aperture,
         };
       }
     );

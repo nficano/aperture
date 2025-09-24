@@ -49,8 +49,8 @@ export class DatadogProvider extends HttpProvider {
     options: DatadogProviderOptions,
   ): DatadogPayload {
     const tags = {
-      ...(options.tags ?? {}),
-      ...(event.tags ?? {}),
+      ...options.tags,
+      ...event.tags,
       ...(event.domain ? { domain: event.domain } : {}),
       ...(event.impact ? { impact: event.impact } : {}),
     };
@@ -71,7 +71,7 @@ export class DatadogProvider extends HttpProvider {
           ? event.timestamp.toISOString()
           : event.timestamp,
       attributes: {
-        ...(event.context ?? {}),
+        ...event.context,
         instrumentation: event.instrumentation,
         runtime: (event as LogEvent).runtime,
         value: "value" in event ? event.value : undefined,
@@ -81,7 +81,7 @@ export class DatadogProvider extends HttpProvider {
 
     if ("error" in event && event.error) {
       payload.attributes = {
-        ...(payload.attributes ?? {}),
+        ...payload.attributes,
         error: {
           message: event.error.message,
           stack: event.error.stack,

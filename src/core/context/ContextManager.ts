@@ -63,7 +63,7 @@ function createStackStorage(): StorageAdapter {
       }
     },
     getStore(): ApertureContext | undefined {
-      return stack.length ? stack[stack.length - 1] : undefined;
+      return stack.length > 0 ? stack.at(-1) : undefined;
     },
   };
 }
@@ -71,7 +71,7 @@ function createStackStorage(): StorageAdapter {
 /**
  * Manages scoped context propagation for logging operations.
  */
-export class ContextManager {
+export const ContextManager = {
   /**
    * Runs a callback with the provided context merged into the active store.
    * @template T
@@ -79,22 +79,22 @@ export class ContextManager {
    * @param {() => T} fn - Callback executed with the merged context.
    * @returns {T} The callback result.
    */
-  static runWithContext<T>(context: ApertureContext, fn: () => T): T {
+  runWithContext<T>(context: ApertureContext, fn: () => T): T {
     const current = storage.getStore() ?? {};
     const merged: ApertureContext = {
       ...current,
       ...context,
       // Ensure tags are merged shallowly
       tags: {
-        ...(current.tags ?? {}),
-        ...(context.tags ?? {}),
+        ...current.tags,
+        ...context.tags,
       },
       // Ensure instrumentation from the new context is preserved
       instrumentation: context.instrumentation ?? current.instrumentation,
     };
 
     return storage.run(merged, fn);
-  }
+  },
 
   /**
    * Runs a callback while injecting a domain into the active context.
@@ -103,9 +103,9 @@ export class ContextManager {
    * @param {() => T} fn - Callback executed with the domain context.
    * @returns {T} The callback result.
    */
-  static withDomain<T>(domain: Domain, fn: () => T): T {
+  withDomain<T>(domain: Domain, fn: () => T): T {
     return ContextManager.runWithContext({ domain }, fn);
-  }
+  },
 
   /**
    * Runs a callback with a specific impact level applied to the context.
@@ -114,9 +114,9 @@ export class ContextManager {
    * @param {() => T} fn - Callback executed while the impact is active.
    * @returns {T} The callback result.
    */
-  static withImpact<T>(impact: ImpactType, fn: () => T): T {
+  withImpact<T>(impact: ImpactType, fn: () => T): T {
     return ContextManager.runWithContext({ impact }, fn);
-  }
+  },
 
   /**
    * Runs a callback while merging additional tags into the context.
@@ -125,9 +125,9 @@ export class ContextManager {
    * @param {() => T} fn - Callback executed while the tags are active.
    * @returns {T} The callback result.
    */
-  static withTags<T>(tags: TagRecord, fn: () => T): T {
+  withTags<T>(tags: TagRecord, fn: () => T): T {
     return ContextManager.runWithContext({ tags }, fn);
-  }
+  },
 
   /**
    * Runs a callback with user information merged into the active context.
@@ -136,38 +136,38 @@ export class ContextManager {
    * @param {() => T} fn - Callback executed while the user context is active.
    * @returns {T} The callback result.
    */
-  static withUser<T>(
+  withUser<T>(
     user: NonNullable<ApertureContext["user"]>,
     fn: () => T,
   ): T {
     return ContextManager.runWithContext({ user }, fn);
-  }
+  },
 
   /**
    * Retrieves the currently active context snapshot.
    * @returns {ApertureContext} Current context or an empty object when unset.
    */
-  static getContext(): ApertureContext {
+  getContext(): ApertureContext {
     return storage.getStore() ?? {};
-  }
+  },
 
   /**
    * Merges provided context data with the currently active context.
    * @param {ApertureContext} context - Context values to merge.
    * @returns {ApertureContext} Combined context object.
    */
-  static mergeWithContext(context: ApertureContext): ApertureContext {
+  mergeWithContext(context: ApertureContext): ApertureContext {
     const current = ContextManager.getContext();
     return {
       ...current,
       ...context,
       // Merge tags from both sources
       tags: {
-        ...(current.tags ?? {}),
-        ...(context.tags ?? {}),
+        ...current.tags,
+        ...context.tags,
       },
       // Prefer explicitly provided instrumentation, otherwise keep current
       instrumentation: context.instrumentation ?? current.instrumentation,
     };
-  }
-}
+  },
+};

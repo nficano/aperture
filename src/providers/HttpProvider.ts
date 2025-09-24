@@ -68,7 +68,7 @@ export class HttpProvider implements ApertureProvider {
 
     if (options.flushIntervalMs && scheduleInterval) {
       const interval = scheduleInterval(() => {
-        this.flush().catch(() => undefined);
+        this.flush().catch(() => {});
       }, options.flushIntervalMs);
       unrefTimer(interval ?? null);
       this.timer = interval ?? null;
@@ -99,9 +99,9 @@ export class HttpProvider implements ApertureProvider {
    * @throws {Error} When no global fetch implementation is available.
    */
   async flush(): Promise<void> {
-    if (!this.buffer.length) return;
+    if (this.buffer.length === 0) return;
 
-    const payload = this.buffer.splice(0, this.buffer.length);
+    const payload = this.buffer.splice(0);
 
     try {
       if (!httpFetch) {
@@ -141,7 +141,7 @@ export class HttpProvider implements ApertureProvider {
     this.buffer.push(serialized);
 
     if (this.buffer.length >= this.batchSize) {
-      this.flush().catch(() => undefined);
+      this.flush().catch(() => {});
     }
   }
 

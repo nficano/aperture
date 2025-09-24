@@ -24,7 +24,7 @@ const perf = (
 class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
   private readonly logger: Logger;
   private readonly autoLog: boolean;
-  private readonly startTime = InstrumentHandleImpl.now();
+  private readonly startTime = getCurrentTime();
   private readonly baseMessage: string;
   private context: ApertureContext;
   private metadata: InstrumentationMetadata;
@@ -40,7 +40,7 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
     logger: Logger,
     metadata: InstrumentationMetadata,
     baseContext: ApertureContext,
-    autoLog: boolean,
+    autoLog: boolean
   ) {
     this.logger = logger;
     this.autoLog = autoLog;
@@ -63,7 +63,7 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
    */
   annotate(tags: TagRecord): InstrumentHandle<T> {
     const merged = {
-      ...(this.context.tags ?? {}),
+      ...this.context.tags,
       ...tags,
     };
 
@@ -86,8 +86,8 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
       step: options.step,
       status: "start",
       context: {
-        ...(this.metadata.context ?? {}),
-        ...(options.metadata ?? {}),
+        ...this.metadata.context,
+        ...options.metadata,
       },
     };
 
@@ -95,8 +95,8 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
       ...this.context,
       instrumentation: this.metadata,
       tags: {
-        ...(this.context.tags ?? {}),
-        ...(options.tags ?? {}),
+        ...this.context.tags,
+        ...options.tags,
       },
     };
 
@@ -122,8 +122,8 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
       status: "success",
       durationMs,
       context: {
-        ...(this.metadata.context ?? {}),
-        ...(metadata ?? {}),
+        ...this.metadata.context,
+        ...metadata,
       },
     };
 
@@ -136,7 +136,7 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
       this.log("info", `${this.baseMessage} success`, {
         context: {
           durationMs,
-          ...(metadata ?? {}),
+          ...metadata,
         },
       });
     }
@@ -157,8 +157,8 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
       status: "error",
       durationMs,
       context: {
-        ...(this.metadata.context ?? {}),
-        ...(metadata ?? {}),
+        ...this.metadata.context,
+        ...metadata,
       },
     };
 
@@ -171,7 +171,7 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
       error,
       context: {
         durationMs,
-        ...(metadata ?? {}),
+        ...metadata,
       },
     });
   }
@@ -184,7 +184,7 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
    */
   finish(
     status: InstrumentationMetadata["status"],
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): void {
     const durationMs = this.getDuration();
 
@@ -193,8 +193,8 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
       status,
       durationMs,
       context: {
-        ...(this.metadata.context ?? {}),
-        ...(metadata ?? {}),
+        ...this.metadata.context,
+        ...metadata,
       },
     };
 
@@ -207,7 +207,7 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
       this.log("info", `${this.baseMessage} ${status}`, {
         context: {
           durationMs,
-          ...(metadata ?? {}),
+          ...metadata,
         },
       });
     }
@@ -237,7 +237,7 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
    * @returns {number} Duration in milliseconds.
    */
   private getDuration(): number {
-    return Math.round(InstrumentHandleImpl.now() - this.startTime);
+    return Math.round(getCurrentTime() - this.startTime);
   }
 
   /**
@@ -251,7 +251,7 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
   private log(
     level: "debug" | "info" | "warn" | "error",
     message: string,
-    options?: LogOptions,
+    options?: LogOptions
   ): void {
     const loggerWithContext = this.logger.child({
       ...this.context,
@@ -265,14 +265,12 @@ class InstrumentHandleImpl<T> implements InstrumentHandle<T> {
   }
 }
 
-namespace InstrumentHandleImpl {
-  /**
-   * Gets a high-resolution timestamp when available.
-   * @returns {number} Current time in milliseconds.
-   */
-  export function now(): number {
-    return typeof perf !== "undefined" ? perf.now() : Date.now();
-  }
+/**
+ * Gets a high-resolution timestamp when available.
+ * @returns {number} Current time in milliseconds.
+ */
+function getCurrentTime(): number {
+  return perf === undefined ? Date.now() : perf.now();
 }
 
 interface CreateInstrumentOptions extends InstrumentBaseOptions {
@@ -290,7 +288,7 @@ interface CreateInstrumentOptions extends InstrumentBaseOptions {
  */
 function createInstrument<T>(
   logger: Logger,
-  options: CreateInstrumentOptions,
+  options: CreateInstrumentOptions
 ): InstrumentHandle<T> {
   const metadata: InstrumentationMetadata = {
     instrumentType: options.instrumentType,
@@ -311,7 +309,7 @@ function createInstrument<T>(
     logger,
     metadata,
     baseContext,
-    options.autoLog !== false,
+    options.autoLog !== false
   );
 }
 
@@ -329,7 +327,7 @@ function createInstrument<T>(
 export function instrumentUserJourney<T>(
   logger: Logger,
   name: string,
-  options: InstrumentBaseOptions = {},
+  options: InstrumentBaseOptions = {}
 ): InstrumentHandle<T> {
   return createInstrument<T>(logger, {
     instrumentType: "user-journey",
@@ -349,7 +347,7 @@ export function instrumentUserJourney<T>(
 export function instrumentApiCall<T>(
   logger: Logger,
   endpoint: string,
-  options: InstrumentBaseOptions = {},
+  options: InstrumentBaseOptions = {}
 ): InstrumentHandle<T> {
   return createInstrument<T>(logger, {
     instrumentType: "api-call",
@@ -369,7 +367,7 @@ export function instrumentApiCall<T>(
 export function instrumentFunnel<T>(
   logger: Logger,
   name: string,
-  options: InstrumentBaseOptions = {},
+  options: InstrumentBaseOptions = {}
 ): InstrumentHandle<T> {
   return createInstrument<T>(logger, {
     instrumentType: "funnel",
@@ -389,7 +387,7 @@ export function instrumentFunnel<T>(
 export function instrumentConversion<T>(
   logger: Logger,
   name: string,
-  options: InstrumentBaseOptions = {},
+  options: InstrumentBaseOptions = {}
 ): InstrumentHandle<T> {
   return createInstrument<T>(logger, {
     instrumentType: "conversion",
@@ -413,7 +411,7 @@ export function withInstrument<T>(
   name: string,
   instrumentType: InstrumentationMetadata["instrumentType"],
   fn: InstrumentFn<T>,
-  options: InstrumentBaseOptions = {},
+  options: InstrumentBaseOptions = {}
 ): Promise<T> {
   const instrument = createInstrument<T>(logger, {
     instrumentType,

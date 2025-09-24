@@ -21,7 +21,7 @@ export class DomainRegistry {
    * @returns {void}
    */
   registerMany(definitions: DomainDefinition[]): void {
-    definitions.forEach((definition) => this.register(definition));
+    for (const definition of definitions) this.register(definition);
   }
 
   /**

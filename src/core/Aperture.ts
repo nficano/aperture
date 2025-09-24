@@ -6,7 +6,6 @@ import type {
   ApertureOptions,
   ApertureProvider,
   Domain,
-  DomainDefinition,
   Logger,
   LoggerConfig,
   ProviderContext,
@@ -26,10 +25,10 @@ const globalEnv =
 const diagnosticConsole =
   (globalThis as unknown as { console?: ConsoleLike }).console ??
   ({
-    error: () => undefined,
-    warn: () => undefined,
-    info: () => undefined,
-    log: () => undefined,
+    error: () => {},
+    warn: () => {},
+    info: () => {},
+    log: () => {},
   } satisfies ConsoleLike);
 
 export type { ApertureOptions } from "../types/index.js";
@@ -56,12 +55,11 @@ export class Aperture {
     this.release = options.release;
     this.runtime = options.runtime;
 
-    options.domains?.forEach((definition) =>
-      this.domainRegistry.register(definition)
-    );
-    options.providers?.forEach((provider) => {
+    if (options.domains) for (const definition of options.domains) this.domainRegistry.register(definition)
+    ;
+    if (options.providers) for (const provider of options.providers) {
       this.registerProvider(provider);
-    });
+    }
   }
 
   /**
@@ -105,7 +103,7 @@ export class Aperture {
     const index = this.providers.findIndex(
       (provider) => provider.name === name
     );
-    if (index >= 0) {
+    if (index !== -1) {
       const [provider] = this.providers.splice(index, 1);
       const shutdownResult = provider.shutdown?.();
       if (shutdownResult instanceof Promise) {
@@ -169,7 +167,7 @@ export class Aperture {
         domain,
         impact: definition?.defaultImpact,
         tags: {
-          ...(definition?.defaultTags ?? {}),
+          ...definition?.defaultTags,
         },
       },
       fn

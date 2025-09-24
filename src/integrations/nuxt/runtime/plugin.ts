@@ -86,7 +86,7 @@ export default defineNuxtPlugin(
   const environment = rawEnvironment as "development" | "production" | "test";
 
   const globalObject = globalThis as ApertureGlobal;
-  const isServer = typeof globalObject.window === "undefined";
+  const isServer = globalObject.window === undefined;
   let aperture = globalObject[GLOBAL_KEY] as Aperture | undefined;
 
   if (!aperture) {

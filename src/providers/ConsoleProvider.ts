@@ -14,21 +14,21 @@ type ConsoleLike = {
 };
 
 const LEVEL_COLORS: Record<string, string> = {
-  debug: "\x1B[38;5;240m",
-  info: "\x1B[32m",
-  warn: "\x1B[33m",
-  error: "\x1B[31m",
+  debug: "\u001B[38;5;240m",
+  info: "\u001B[32m",
+  warn: "\u001B[33m",
+  error: "\u001B[31m",
 };
 
-const RESET = "\x1B[0m";
+const RESET = "\u001B[0m";
 
 const consoleOutput =
   (globalThis as unknown as { console?: ConsoleLike }).console ??
   ({
-    log: () => undefined,
-    warn: () => undefined,
-    error: () => undefined,
-    info: () => undefined,
+    log: () => {},
+    warn: () => {},
+    error: () => {},
+    info: () => {},
   } satisfies ConsoleLike);
 /**
  * Renders arbitrary values into console-friendly strings.
@@ -100,8 +100,7 @@ export class ConsoleProvider implements ApertureProvider {
     const reset = color ? RESET : "";
     const parts: string[] = [];
 
-    parts.push(`${color}[${event.level.toUpperCase()}]${reset}`);
-    parts.push(event.message);
+    parts.push(`${color}[${event.level.toUpperCase()}]${reset}`, event.message);
 
     if (event.domain) {
       parts.push(`domain=${event.domain}`);
@@ -149,12 +148,11 @@ export class ConsoleProvider implements ApertureProvider {
       return;
     }
 
-    const color = this.options.enableColors === false ? "" : "\x1B[36m";
+    const color = this.options.enableColors === false ? "" : "\u001B[36m";
     const reset = color ? RESET : "";
     const parts: string[] = [];
 
-    parts.push(`${color}[METRIC]${reset}`);
-    parts.push(`${event.name}=${event.value ?? "n/a"}`);
+    parts.push(`${color}[METRIC]${reset}`, `${event.name}=${event.value ?? "n/a"}`);
 
     if (event.domain) parts.push(`domain=${event.domain}`);
     if (event.impact) parts.push(`impact=${event.impact}`);
@@ -191,7 +189,7 @@ export class ConsoleProvider implements ApertureProvider {
    */
   private redact<T>(payload: T): T {
     const redactKeys = this.options.redactKeys ?? [];
-    if (!redactKeys.length) return payload;
+    if (redactKeys.length === 0) return payload;
     if (payload === null || typeof payload !== "object") {
       return payload;
     }

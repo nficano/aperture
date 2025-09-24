@@ -38,10 +38,10 @@ export class ApertureLogger implements LoggerInterface {
     this.providers = config?.providers ?? [];
     this.defaultTags = config?.defaultTags;
     this.scope = {
-      ...(scope ?? {}),
+      ...scope,
       tags: {
-        ...(this.defaultTags ?? {}),
-        ...(scope?.tags ?? {}),
+        ...this.defaultTags,
+        ...scope?.tags,
       },
     };
   }
@@ -102,7 +102,7 @@ export class ApertureLogger implements LoggerInterface {
    */
   withTags(tags: TagRecord): LoggerInterface {
     const mergedTags = {
-      ...(this.scope.tags ?? {}),
+      ...this.scope.tags,
       ...tags,
     };
 
@@ -128,8 +128,8 @@ export class ApertureLogger implements LoggerInterface {
       ...this.scope,
       ...context,
       tags: {
-        ...(this.scope.tags ?? {}),
-        ...(context.tags ?? {}),
+        ...this.scope.tags,
+        ...context.tags,
       },
     };
 
@@ -159,12 +159,12 @@ export class ApertureLogger implements LoggerInterface {
     const runtimeContext = ContextManager.mergeWithContext(this.scope);
 
     const tags = {
-      ...(runtimeContext.tags ?? {}),
-      ...(options.tags ?? {}),
+      ...runtimeContext.tags,
+      ...options.tags,
     };
 
     const baseContext = {
-      ...(options.context ?? {}),
+      ...options.context,
       ...(runtimeContext.domain ? { domain: runtimeContext.domain } : {}),
       ...(runtimeContext.user ? { user: runtimeContext.user } : {}),
       ...(runtimeContext.instrumentation
@@ -187,8 +187,8 @@ export class ApertureLogger implements LoggerInterface {
       },
     };
 
-    this.providers.forEach((provider) => {
+    for (const provider of this.providers) {
       provider.log?.(event);
-    });
+    }
   }
 }

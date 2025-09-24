@@ -11,7 +11,7 @@ type Logger = {
 };
 
 const NOOP_LOGGER: Logger = {
-  warn: () => undefined,
+  warn: () => {},
 };
 
 export type { SentryProviderOptions } from "../types/index.js";
@@ -48,7 +48,7 @@ export class SentryProvider implements ApertureProvider {
           dsn: this.options.dsn,
           environment: this.options.environment ?? context.environment,
           release: this.options.release ?? context.release,
-          sampleRate: this.options.sampleRate ?? 1.0,
+          sampleRate: this.options.sampleRate ?? 1,
           tracesSampleRate: this.options.tracesSampleRate ?? 0.1,
           attachStacktrace: this.options.attachStacktrace ?? true,
         });
@@ -56,7 +56,7 @@ export class SentryProvider implements ApertureProvider {
     } catch (error) {
       this.logger.warn(
         "[Aperture][Sentry] @sentry/node is not available. Provider disabled.",
-        error,
+        error
       );
       this.sentry = null;
     }
@@ -73,7 +73,7 @@ export class SentryProvider implements ApertureProvider {
     const payload = {
       level: this.mapLevel(event.level),
       tags: {
-        ...(event.tags ?? {}),
+        ...event.tags,
         ...(event.domain ? { domain: event.domain } : {}),
         ...(event.impact ? { impact: event.impact } : {}),
       },
@@ -109,7 +109,7 @@ export class SentryProvider implements ApertureProvider {
       level: "info",
       timestamp: timestampSeconds,
       tags: {
-        ...(event.tags ?? {}),
+        ...event.tags,
         ...(event.domain ? { domain: event.domain } : {}),
         ...(event.impact ? { impact: event.impact } : {}),
       },
@@ -145,15 +145,18 @@ export class SentryProvider implements ApertureProvider {
    */
   private mapLevel(level: LogEvent["level"]): string {
     switch (level) {
-      case "debug":
+      case "debug": {
         return "debug";
-      case "info":
+      }
+      case "info": {
         return "info";
-      case "warn":
+      }
+      case "warn": {
         return "warning";
-      case "error":
-      default:
+      }
+      default: {
         return "error";
+      }
     }
   }
 }
