@@ -27,7 +27,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && cp src/integrations/nuxt/nuxt-config.d.ts dist/integrations/nuxt/",
+    "build": "tsc -p tsconfig.json",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "test": "vitest run",
