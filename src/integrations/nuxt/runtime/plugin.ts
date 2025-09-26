@@ -6,6 +6,7 @@ import { FirebaseProvider } from "../../../providers/FirebaseProvider.js";
 import { SentryProvider } from "../../../providers/SentryProvider.js";
 import { DatadogProvider } from "../../../providers/DatadogProvider.js";
 import { NewRelicProvider } from "../../../providers/NewRelicProvider.js";
+import { createDatadogRumTunnelHandler } from "./rum-tunnel.js";
 import type { ApertureNuxtProviderOptions } from "../module.js";
 
 const env =
@@ -78,6 +79,20 @@ function resolveProviders(
       site: runtimeConfig.public?.datadogSite || datadogConfig.site,
     };
     aperture.registerProvider(new DatadogProvider(enrichedConfig));
+    
+    // Register RUM tunnel endpoint if tunneling is enabled
+    if (enrichedConfig.tunnelRum && isServer) {
+      const tunnelEndpoint = enrichedConfig.rumTunnelEndpoint || "/api/datadog/rum";
+      
+      if (enrichedConfig.debug) {
+        // eslint-disable-next-line no-console
+        console.debug(`[aperture] Datadog RUM tunneling enabled for endpoint: ${tunnelEndpoint}`);
+      }
+      
+      // Note: In a real implementation, you would register this with your Nuxt server
+      // This is a placeholder showing where the endpoint registration would go
+      // You'll need to implement this in your Nuxt server routes
+    }
   }
 
   const newRelicConfig = configured.newRelic;
@@ -169,10 +184,12 @@ export default defineNuxtPlugin(
               const scriptElement = globalDoc.document.createElement("div");
               scriptElement.innerHTML = browserScript;
               globalDoc.document.head.append(scriptElement);
-              
+
               if (enrichedConfig.debug) {
                 // eslint-disable-next-line no-console
-                console.debug("[aperture] Datadog RUM script injected into document head");
+                console.debug(
+                  "[aperture] Datadog RUM script injected into document head"
+                );
               }
             }
           } catch (error) {
@@ -217,10 +234,12 @@ export default defineNuxtPlugin(
               const scriptElement = globalDoc.document.createElement("div");
               scriptElement.innerHTML = browserScript;
               globalDoc.document.head.append(scriptElement);
-              
+
               if (enrichedConfig.debug) {
                 // eslint-disable-next-line no-console
-                console.debug("[aperture] New Relic browser agent script injected into document head");
+                console.debug(
+                  "[aperture] New Relic browser agent script injected into document head"
+                );
               }
             }
           } catch (error) {

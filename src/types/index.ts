@@ -203,6 +203,9 @@ export interface DatadogProviderOptions {
   rumClientToken?: string;
   site?: string; // e.g., 'datadoghq.com', 'datadoghq.eu', etc.
   debug?: boolean;
+  // Server-side tunneling options
+  tunnelRum?: boolean; // Enable server-side tunneling of RUM data
+  rumTunnelEndpoint?: string; // Server endpoint to receive RUM data
 }
 
 export interface NewRelicProviderOptions {

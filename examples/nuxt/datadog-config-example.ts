@@ -55,6 +55,10 @@ export default {
         // Optional: Debug logging
         debug: process.env.NODE_ENV === "development",
 
+        // Server-side tunneling options
+        tunnelRum: true, // Enable server-side tunneling of RUM data
+        rumTunnelEndpoint: "/api/datadog/rum", // Server endpoint to receive RUM data
+
         // Optional: Additional tags
         tags: {
           team: "platform",
@@ -141,4 +145,12 @@ export const directConfigExample = {
  * - Client-side: RUM script generation and injection
  * - HTTP requests: Success/failure status and payload details
  * - Browser agent: Configuration details and initialization status
+ *
+ * Server-Side Tunneling:
+ * When tunnelRum: true is enabled:
+ * - Browser RUM data is sent to your server endpoint instead of directly to Datadog
+ * - Your server forwards the data to Datadog's RUM intake endpoint
+ * - Provides better security and control over RUM data
+ * - Requires implementing a server API route (see datadog-rum-tunnel.ts example)
+ * - Default endpoint: /api/datadog/rum (configurable via rumTunnelEndpoint)
  */

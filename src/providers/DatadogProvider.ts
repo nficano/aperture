@@ -55,6 +55,7 @@ export class DatadogProvider extends HttpProvider {
     const site = options.site || "datadoghq.com";
     const env = options.environment || "production";
     const service = options.service;
+    const tunnelEndpoint = options.rumTunnelEndpoint || "/api/datadog/rum";
 
     if (options.debug) {
       // eslint-disable-next-line no-console
@@ -64,10 +65,40 @@ export class DatadogProvider extends HttpProvider {
         site,
         service,
         environment: env,
+        tunnelRum: options.tunnelRum,
+        tunnelEndpoint,
       });
     }
 
-    return `
+    return options.tunnelRum
+      ? // Server-side tunneling: Send RUM data to our server endpoint
+        `
+<script>
+(function(h,o,u,n,d) {
+  h=h[d]=h[d]||{q:[],onReady:function(c){h.q.push(c)}}
+  d=o.createElement(u);d.async=1;d.src=n
+  n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
+})(window,document,'script','https://www.${site}/browser-sdk/v3/datadog-rum.js','DD_RUM')
+DD_RUM.onReady(function() {
+  DD_RUM.init({
+    applicationId: '${options.rumApplicationId}',
+    clientToken: '${options.rumClientToken}',
+    site: '${site}',
+    service: '${service}',
+    env: '${env}',
+    version: '1.0.0',
+    sampleRate: 100,
+    trackInteractions: true,
+    trackResources: true,
+    trackLongTasks: true,
+    defaultPrivacyLevel: 'mask-user-input',
+    // Override the default intake endpoint to tunnel through our server
+    intake: '${tunnelEndpoint}'
+  });
+})
+</script>`
+      : // Direct connection: Send RUM data directly to Datadog
+        `
 <script>
 (function(h,o,u,n,d) {
   h=h[d]=h[d]||{q:[],onReady:function(c){h.q.push(c)}}
