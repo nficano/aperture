@@ -30,6 +30,7 @@ export class NewRelicProvider extends HttpProvider {
       batchSize: options.batchSize,
       flushIntervalMs: options.flushIntervalMs,
       transform: (event) => NewRelicProvider.transform(event, options),
+      debug: options.debug,
     };
 
     super(httpOptions);
@@ -50,6 +51,17 @@ export class NewRelicProvider extends HttpProvider {
       throw new Error(
         "Browser agent requires accountID, trustKey, agentID, and applicationID"
       );
+    }
+
+    if (options.debug) {
+      // eslint-disable-next-line no-console
+      console.debug("[newrelic] Generating browser agent script with config:", {
+        accountID: options.accountID,
+        trustKey: options.trustKey,
+        agentID: options.agentID,
+        applicationID: options.applicationID,
+        licenseKey: options.licenseKey?.slice(0, 8) + "...",
+      });
     }
 
     return `

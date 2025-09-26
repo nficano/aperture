@@ -169,12 +169,14 @@ export interface ApertureOptions {
 export interface ConsoleProviderOptions {
   enableColors?: boolean;
   redactKeys?: string[];
+  debug?: boolean;
 }
 
 export interface FirebaseProviderOptions {
   collection?: string;
   app?: unknown;
   transform?(payload: LogEvent | MetricEvent): Record<string, unknown>;
+  debug?: boolean;
 }
 
 export interface SentryProviderOptions {
@@ -184,6 +186,7 @@ export interface SentryProviderOptions {
   environment?: string;
   release?: string;
   attachStacktrace?: boolean;
+  debug?: boolean;
 }
 
 export interface DatadogProviderOptions {
@@ -199,6 +202,7 @@ export interface DatadogProviderOptions {
   rumApplicationId?: string;
   rumClientToken?: string;
   site?: string; // e.g., 'datadoghq.com', 'datadoghq.eu', etc.
+  debug?: boolean;
 }
 
 export interface NewRelicProviderOptions {
@@ -213,6 +217,7 @@ export interface NewRelicProviderOptions {
   trustKey?: string;
   agentID?: string;
   applicationID?: string;
+  debug?: boolean;
 }
 
 export interface HttpProviderOptions {
@@ -223,6 +228,7 @@ export interface HttpProviderOptions {
   flushIntervalMs?: number;
   transform?(payload: LogEvent | MetricEvent): Record<string, unknown>;
   onError?(error: unknown): void;
+  debug?: boolean;
 }
 
 export interface ApertureNuxtProviderOptions {

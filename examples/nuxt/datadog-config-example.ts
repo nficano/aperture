@@ -52,6 +52,9 @@ export default {
         batchSize: 100,
         flushIntervalMs: 5000,
 
+        // Optional: Debug logging
+        debug: process.env.NODE_ENV === "development",
+
         // Optional: Additional tags
         tags: {
           team: "platform",
@@ -84,6 +87,7 @@ export const directConfigExample = {
         rumApplicationId: "your-rum-application-id",
         rumClientToken: "pub30b17cf981de045a7d00ab5c44357a89", // Example token
         site: "datadoghq.com",
+        debug: true, // Enable debug logging for development
         tags: {
           team: "platform",
         },
@@ -130,4 +134,11 @@ export const directConfigExample = {
  * - trackLongTasks: true (tracks long-running JavaScript tasks)
  * - defaultPrivacyLevel: 'mask-user-input' (masks sensitive form inputs)
  * - sampleRate: 100 (100% sampling rate for development, adjust for production)
+ *
+ * Debug Features:
+ * When debug: true is enabled, you'll see detailed logging for:
+ * - Server-side: Log and metric events being sent to Datadog
+ * - Client-side: RUM script generation and injection
+ * - HTTP requests: Success/failure status and payload details
+ * - Browser agent: Configuration details and initialization status
  */

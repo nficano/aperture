@@ -56,6 +56,9 @@ export default {
         // Optional: Batching configuration
         batchSize: 100,
         flushIntervalMs: 5000,
+
+        // Optional: Debug logging
+        debug: process.env.NODE_ENV === "development",
       },
     },
   },
@@ -84,6 +87,7 @@ export const directConfigExample = {
         trustKey: "7112268",
         agentID: "1589134127",
         applicationID: "1589134127",
+        debug: true, // Enable debug logging for development
       },
     },
   },

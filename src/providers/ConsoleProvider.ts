@@ -86,6 +86,17 @@ export class ConsoleProvider implements ApertureProvider {
    * @returns {void}
    */
   log(event: LogEvent): void {
+    if (this.options.debug) {
+      consoleOutput.log(`[console] Debug - Log event received:`, {
+        message: event.message,
+        level: event.level,
+        domain: event.domain,
+        impact: event.impact,
+        tags: event.tags,
+        timestamp: event.timestamp,
+      });
+    }
+
     if (this.environment === "production") {
       // In production, emit structured JSON for aggregation.
       const payload = this.redact(event);
@@ -141,6 +152,18 @@ export class ConsoleProvider implements ApertureProvider {
    * @returns {void}
    */
   metric(event: MetricEvent): void {
+    if (this.options.debug) {
+      consoleOutput.log(`[console] Debug - Metric event received:`, {
+        name: event.name,
+        value: event.value,
+        unit: event.unit,
+        domain: event.domain,
+        impact: event.impact,
+        tags: event.tags,
+        timestamp: event.timestamp,
+      });
+    }
+
     if (this.environment === "production") {
       consoleOutput.log(
         JSON.stringify({ type: "metric", ...this.redact(event) }),

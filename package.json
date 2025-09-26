@@ -1,6 +1,6 @@
 {
   "name": "@teachmehipaa/aperture",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "description": "Domain-driven observability toolkit for Nuxt apps and Node services.",
   "license": "UNLICENSED",
   "type": "module",

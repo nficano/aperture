@@ -10,3 +10,6 @@ export * from "./providers/SentryProvider.js";
 export * from "./providers/HttpProvider.js";
 export * from "./providers/DatadogProvider.js";
 export * from "./providers/NewRelicProvider.js";
+
+// Server-side utilities for Nuxt (separate from module to avoid @nuxt/kit imports in server runtime)
+export * from "./integrations/nuxt/server.js";

@@ -49,6 +49,7 @@ export class HttpProvider implements ApertureProvider {
   private readonly transform?: HttpProviderOptions["transform"];
   private readonly onError?: HttpProviderOptions["onError"];
   private readonly batchSize: number;
+  private readonly debug: boolean;
   private buffer: Array<Record<string, unknown>> = [];
   private timer: TimerHandle | null = null;
 
@@ -63,6 +64,7 @@ export class HttpProvider implements ApertureProvider {
     this.batchSize = options.batchSize ?? 20;
     this.transform = options.transform;
     this.onError = options.onError;
+    this.debug = options.debug ?? false;
 
     const scheduleInterval = timers.setInterval;
 
@@ -81,6 +83,15 @@ export class HttpProvider implements ApertureProvider {
    * @returns {void}
    */
   log(event: LogEvent): void {
+    if (this.debug) {
+      console.debug(`[${this.name}] Log event:`, {
+        message: event.message,
+        level: event.level,
+        domain: event.domain,
+        impact: event.impact,
+        tags: event.tags,
+      });
+    }
     this.enqueue(event);
   }
 
@@ -90,6 +101,16 @@ export class HttpProvider implements ApertureProvider {
    * @returns {void}
    */
   metric(event: MetricEvent): void {
+    if (this.debug) {
+      console.debug(`[${this.name}] Metric event:`, {
+        name: event.name,
+        value: event.value,
+        unit: event.unit,
+        domain: event.domain,
+        impact: event.impact,
+        tags: event.tags,
+      });
+    }
     this.enqueue(event);
   }
 
@@ -103,6 +124,10 @@ export class HttpProvider implements ApertureProvider {
 
     const payload = this.buffer.splice(0);
 
+    if (this.debug) {
+      console.debug(`[${this.name}] Flushing ${payload.length} events to ${this.endpoint}`);
+    }
+
     try {
       if (!httpFetch) {
         throw new Error("global fetch implementation not available");
@@ -113,7 +138,14 @@ export class HttpProvider implements ApertureProvider {
         headers: this.headers,
         body: JSON.stringify(payload),
       });
+
+      if (this.debug) {
+        console.debug(`[${this.name}] Successfully sent ${payload.length} events`);
+      }
     } catch (error) {
+      if (this.debug) {
+        console.error(`[${this.name}] Failed to send events:`, error);
+      }
       this.onError?.(error);
     }
   }

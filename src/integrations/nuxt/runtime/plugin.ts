@@ -69,8 +69,12 @@ function resolveProviders(
     const enrichedConfig = {
       ...datadogConfig,
       apiKey: runtimeConfig.datadogApiKey || datadogConfig.apiKey,
-      rumApplicationId: runtimeConfig.public?.datadogRumApplicationId || datadogConfig.rumApplicationId,
-      rumClientToken: runtimeConfig.public?.datadogRumClientToken || datadogConfig.rumClientToken,
+      rumApplicationId:
+        runtimeConfig.public?.datadogRumApplicationId ||
+        datadogConfig.rumApplicationId,
+      rumClientToken:
+        runtimeConfig.public?.datadogRumClientToken ||
+        datadogConfig.rumClientToken,
       site: runtimeConfig.public?.datadogSite || datadogConfig.site,
     };
     aperture.registerProvider(new DatadogProvider(enrichedConfig));
@@ -135,7 +139,7 @@ export default defineNuxtPlugin(
     // Inject browser monitoring agents on client side
     if (!isServer) {
       const runtimeConfig = useRuntimeConfig() as any;
-      
+
       // Inject Datadog RUM
       if (apertureConfig.providers?.datadog) {
         const datadogConfig = apertureConfig.providers.datadog;
@@ -144,12 +148,17 @@ export default defineNuxtPlugin(
             const enrichedConfig = {
               ...datadogConfig,
               apiKey: runtimeConfig.datadogApiKey || datadogConfig.apiKey,
-              rumApplicationId: runtimeConfig.public?.datadogRumApplicationId || datadogConfig.rumApplicationId,
-              rumClientToken: runtimeConfig.public?.datadogRumClientToken || datadogConfig.rumClientToken,
+              rumApplicationId:
+                runtimeConfig.public?.datadogRumApplicationId ||
+                datadogConfig.rumApplicationId,
+              rumClientToken:
+                runtimeConfig.public?.datadogRumClientToken ||
+                datadogConfig.rumClientToken,
               site: runtimeConfig.public?.datadogSite || datadogConfig.site,
             };
-            
-            const browserScript = DatadogProvider.generateBrowserRumScript(enrichedConfig);
+
+            const browserScript =
+              DatadogProvider.generateBrowserRumScript(enrichedConfig);
             const globalDoc = globalThis as {
               document?: {
                 createElement: (tag: string) => { innerHTML: string };
@@ -160,6 +169,11 @@ export default defineNuxtPlugin(
               const scriptElement = globalDoc.document.createElement("div");
               scriptElement.innerHTML = browserScript;
               globalDoc.document.head.append(scriptElement);
+              
+              if (enrichedConfig.debug) {
+                // eslint-disable-next-line no-console
+                console.debug("[aperture] Datadog RUM script injected into document head");
+              }
             }
           } catch (error) {
             // eslint-disable-next-line no-console
@@ -181,7 +195,8 @@ export default defineNuxtPlugin(
                 runtimeConfig.public?.newRelicAccountId ||
                 newRelicConfig.accountID,
               trustKey:
-                runtimeConfig.public?.newRelicTrustKey || newRelicConfig.trustKey,
+                runtimeConfig.public?.newRelicTrustKey ||
+                newRelicConfig.trustKey,
               agentID:
                 runtimeConfig.public?.newRelicAgentId || newRelicConfig.agentID,
               applicationID:
@@ -202,10 +217,18 @@ export default defineNuxtPlugin(
               const scriptElement = globalDoc.document.createElement("div");
               scriptElement.innerHTML = browserScript;
               globalDoc.document.head.append(scriptElement);
+              
+              if (enrichedConfig.debug) {
+                // eslint-disable-next-line no-console
+                console.debug("[aperture] New Relic browser agent script injected into document head");
+              }
             }
           } catch (error) {
             // eslint-disable-next-line no-console
-            console.warn("Failed to initialize New Relic browser agent:", error);
+            console.warn(
+              "Failed to initialize New Relic browser agent:",
+              error
+            );
           }
         }
       }

@@ -34,6 +34,7 @@ export class DatadogProvider extends HttpProvider {
       batchSize: options.batchSize,
       flushIntervalMs: options.flushIntervalMs,
       transform: (event) => DatadogProvider.transform(event, options),
+      debug: options.debug,
     };
 
     super(httpOptions);
@@ -46,12 +47,25 @@ export class DatadogProvider extends HttpProvider {
    */
   static generateBrowserRumScript(options: DatadogProviderOptions): string {
     if (!options.rumApplicationId || !options.rumClientToken) {
-      throw new Error("Browser RUM requires rumApplicationId and rumClientToken");
+      throw new Error(
+        "Browser RUM requires rumApplicationId and rumClientToken"
+      );
     }
 
-    const site = options.site || 'datadoghq.com';
-    const env = options.environment || 'production';
+    const site = options.site || "datadoghq.com";
+    const env = options.environment || "production";
     const service = options.service;
+
+    if (options.debug) {
+      // eslint-disable-next-line no-console
+      console.debug("[datadog] Generating browser RUM script with config:", {
+        applicationId: options.rumApplicationId,
+        clientToken: options.rumClientToken?.slice(0, 8) + "...",
+        site,
+        service,
+        environment: env,
+      });
+    }
 
     return `
 <script>
