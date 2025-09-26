@@ -79,16 +79,19 @@ function resolveProviders(
       site: runtimeConfig.public?.datadogSite || datadogConfig.site,
     };
     aperture.registerProvider(new DatadogProvider(enrichedConfig));
-    
+
     // Register RUM tunnel endpoint if tunneling is enabled
     if (enrichedConfig.tunnelRum && isServer) {
-      const tunnelEndpoint = enrichedConfig.rumTunnelEndpoint || "/api/datadog/rum";
-      
+      const tunnelEndpoint =
+        enrichedConfig.rumTunnelEndpoint || "/api/datadog/rum";
+
       if (enrichedConfig.debug) {
         // eslint-disable-next-line no-console
-        console.debug(`[aperture] Datadog RUM tunneling enabled for endpoint: ${tunnelEndpoint}`);
+        console.debug(
+          `[aperture] Datadog RUM tunneling enabled for endpoint: ${tunnelEndpoint}`
+        );
       }
-      
+
       // Note: In a real implementation, you would register this with your Nuxt server
       // This is a placeholder showing where the endpoint registration would go
       // You'll need to implement this in your Nuxt server routes
