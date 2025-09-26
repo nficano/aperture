@@ -1,8 +1,8 @@
 {
-  "name": "@nficano/aperture",
-  "version": "0.1.28",
+  "name": "@teachmehipaa/aperture",
+  "version": "0.1.30",
   "description": "Domain-driven observability toolkit for Nuxt apps and Node services.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -38,17 +38,22 @@
     "version:patch": "COREPACK_ENABLE_STRICT=0 npm version patch && git push && git push --tags",
     "version:minor": "COREPACK_ENABLE_STRICT=0 npm version minor && git push && git push --tags",
     "version:major": "COREPACK_ENABLE_STRICT=0 npm version major && git push && git push --tags",
-    "publish": "COREPACK_ENABLE_STRICT=0 npm publish"
+    "publish": "COREPACK_ENABLE_STRICT=0 npm publish",
+    "clean": "rm -rf dist coverage node_modules"
   },
   "peerDependencies": {
     "@sentry/node": "^7.0.0",
-    "firebase-admin": "^12.0.0"
+    "firebase-admin": "^12.0.0",
+    "@nuxt/kit": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "@sentry/node": {
       "optional": true
     },
     "firebase-admin": {
+      "optional": true
+    },
+    "@nuxt/kit": {
       "optional": true
     }
   },
@@ -68,7 +73,8 @@
     "eslint-plugin-unicorn": "58.0.0",
     "jiti": "^2.6.0",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@nuxt/kit": "^3.0.0"
   },
   "vitest": {
     "environment": "node",
@@ -101,5 +107,5 @@
       "statements": 0.95
     }
   },
-  "packageManager": "bun@1.0.0"
+  "packageManager": "pnpm@9.13.2+sha512.88c9c3864450350e65a33587ab801acf946d7c814ed1134da4a924f6df5a2120fd36b46aab68f7cd1d413149112d53c7db3a4136624cfd00ff1846a0c6cef48a"
 }

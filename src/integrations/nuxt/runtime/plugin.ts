@@ -64,7 +64,16 @@ function resolveProviders(
 
   const datadogConfig = configured.datadog;
   if (isOptionEnabled(datadogConfig) && !existing.has("datadog")) {
-    aperture.registerProvider(new DatadogProvider(datadogConfig));
+    // Inject runtime config values for Datadog credentials
+    const runtimeConfig = useRuntimeConfig() as any;
+    const enrichedConfig = {
+      ...datadogConfig,
+      apiKey: runtimeConfig.datadogApiKey || datadogConfig.apiKey,
+      rumApplicationId: runtimeConfig.public?.datadogRumApplicationId || datadogConfig.rumApplicationId,
+      rumClientToken: runtimeConfig.public?.datadogRumClientToken || datadogConfig.rumClientToken,
+      site: runtimeConfig.public?.datadogSite || datadogConfig.site,
+    };
+    aperture.registerProvider(new DatadogProvider(enrichedConfig));
   }
 
   const newRelicConfig = configured.newRelic;
@@ -123,46 +132,81 @@ export default defineNuxtPlugin(
 
     const logger = aperture.getLogger();
 
-    // Inject New Relic browser agent on client side
-    if (!isServer && apertureConfig.providers?.newRelic) {
-      const newRelicConfig = apertureConfig.providers.newRelic;
-      if (isOptionEnabled(newRelicConfig)) {
-        try {
-          // Use runtime config for browser agent credentials
-          const runtimeConfig = useRuntimeConfig() as any;
-          const enrichedConfig = {
-            ...newRelicConfig,
-            licenseKey:
-              runtimeConfig.newRelicLicenseKey || newRelicConfig.licenseKey,
-            accountID:
-              runtimeConfig.public?.newRelicAccountId ||
-              newRelicConfig.accountID,
-            trustKey:
-              runtimeConfig.public?.newRelicTrustKey || newRelicConfig.trustKey,
-            agentID:
-              runtimeConfig.public?.newRelicAgentId || newRelicConfig.agentID,
-            applicationID:
-              runtimeConfig.public?.newRelicApplicationId ||
-              newRelicConfig.applicationID,
-          };
-
-          const browserScript =
-            NewRelicProvider.generateBrowserAgentScript(enrichedConfig);
-          // Inject the script into the document head
-          const globalDoc = globalThis as {
-            document?: {
-              createElement: (tag: string) => { innerHTML: string };
-              head: { append: (element: unknown) => void };
+    // Inject browser monitoring agents on client side
+    if (!isServer) {
+      const runtimeConfig = useRuntimeConfig() as any;
+      
+      // Inject Datadog RUM
+      if (apertureConfig.providers?.datadog) {
+        const datadogConfig = apertureConfig.providers.datadog;
+        if (isOptionEnabled(datadogConfig)) {
+          try {
+            const enrichedConfig = {
+              ...datadogConfig,
+              apiKey: runtimeConfig.datadogApiKey || datadogConfig.apiKey,
+              rumApplicationId: runtimeConfig.public?.datadogRumApplicationId || datadogConfig.rumApplicationId,
+              rumClientToken: runtimeConfig.public?.datadogRumClientToken || datadogConfig.rumClientToken,
+              site: runtimeConfig.public?.datadogSite || datadogConfig.site,
             };
-          };
-          if (globalDoc.document) {
-            const scriptElement = globalDoc.document.createElement("div");
-            scriptElement.innerHTML = browserScript;
-            globalDoc.document.head.append(scriptElement);
+            
+            const browserScript = DatadogProvider.generateBrowserRumScript(enrichedConfig);
+            const globalDoc = globalThis as {
+              document?: {
+                createElement: (tag: string) => { innerHTML: string };
+                head: { append: (element: unknown) => void };
+              };
+            };
+            if (globalDoc.document) {
+              const scriptElement = globalDoc.document.createElement("div");
+              scriptElement.innerHTML = browserScript;
+              globalDoc.document.head.append(scriptElement);
+            }
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.warn("Failed to initialize Datadog RUM:", error);
           }
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.warn("Failed to initialize New Relic browser agent:", error);
+        }
+      }
+
+      // Inject New Relic browser agent
+      if (apertureConfig.providers?.newRelic) {
+        const newRelicConfig = apertureConfig.providers.newRelic;
+        if (isOptionEnabled(newRelicConfig)) {
+          try {
+            const enrichedConfig = {
+              ...newRelicConfig,
+              licenseKey:
+                runtimeConfig.newRelicLicenseKey || newRelicConfig.licenseKey,
+              accountID:
+                runtimeConfig.public?.newRelicAccountId ||
+                newRelicConfig.accountID,
+              trustKey:
+                runtimeConfig.public?.newRelicTrustKey || newRelicConfig.trustKey,
+              agentID:
+                runtimeConfig.public?.newRelicAgentId || newRelicConfig.agentID,
+              applicationID:
+                runtimeConfig.public?.newRelicApplicationId ||
+                newRelicConfig.applicationID,
+            };
+
+            const browserScript =
+              NewRelicProvider.generateBrowserAgentScript(enrichedConfig);
+            // Inject the script into the document head
+            const globalDoc = globalThis as {
+              document?: {
+                createElement: (tag: string) => { innerHTML: string };
+                head: { append: (element: unknown) => void };
+              };
+            };
+            if (globalDoc.document) {
+              const scriptElement = globalDoc.document.createElement("div");
+              scriptElement.innerHTML = browserScript;
+              globalDoc.document.head.append(scriptElement);
+            }
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.warn("Failed to initialize New Relic browser agent:", error);
+          }
         }
       }
     }

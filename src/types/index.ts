@@ -195,6 +195,10 @@ export interface DatadogProviderOptions {
   endpoint?: string;
   batchSize?: number;
   flushIntervalMs?: number;
+  // Browser RUM credentials (for client-side monitoring)
+  rumApplicationId?: string;
+  rumClientToken?: string;
+  site?: string; // e.g., 'datadoghq.com', 'datadoghq.eu', etc.
 }
 
 export interface NewRelicProviderOptions {

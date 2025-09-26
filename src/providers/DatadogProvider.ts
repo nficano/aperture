@@ -12,6 +12,7 @@ export type { DatadogProviderOptions } from "../types/index.js";
 
 /**
  * Adapts Aperture events to Datadog's log intake API using the HTTP provider.
+ * Also provides browser RUM initialization for client-side monitoring.
  */
 export class DatadogProvider extends HttpProvider {
   /**
@@ -36,6 +37,45 @@ export class DatadogProvider extends HttpProvider {
     };
 
     super(httpOptions);
+  }
+
+  /**
+   * Generates the browser RUM initialization script for client-side monitoring.
+   * @param {DatadogProviderOptions} options - Provider options containing RUM credentials.
+   * @returns {string} HTML script tag for Datadog RUM initialization.
+   */
+  static generateBrowserRumScript(options: DatadogProviderOptions): string {
+    if (!options.rumApplicationId || !options.rumClientToken) {
+      throw new Error("Browser RUM requires rumApplicationId and rumClientToken");
+    }
+
+    const site = options.site || 'datadoghq.com';
+    const env = options.environment || 'production';
+    const service = options.service;
+
+    return `
+<script>
+(function(h,o,u,n,d) {
+  h=h[d]=h[d]||{q:[],onReady:function(c){h.q.push(c)}}
+  d=o.createElement(u);d.async=1;d.src=n
+  n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
+})(window,document,'script','https://www.${site}/browser-sdk/v3/datadog-rum.js','DD_RUM')
+DD_RUM.onReady(function() {
+  DD_RUM.init({
+    applicationId: '${options.rumApplicationId}',
+    clientToken: '${options.rumClientToken}',
+    site: '${site}',
+    service: '${service}',
+    env: '${env}',
+    version: '1.0.0',
+    sampleRate: 100,
+    trackInteractions: true,
+    trackResources: true,
+    trackLongTasks: true,
+    defaultPrivacyLevel: 'mask-user-input'
+  });
+})
+</script>`;
   }
 
   /**
