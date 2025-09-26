@@ -98,7 +98,7 @@ export interface ProviderFactoryOptions {
 }
 
 export type ProviderFactory = (
-  options: ProviderFactoryOptions,
+  options: ProviderFactoryOptions
 ) => ApertureProvider;
 
 export interface LoggerConfig {
@@ -147,12 +147,12 @@ export interface InstrumentHandle<T = unknown> {
   step(options: InstrumentStepOptions): InstrumentHandle<T>;
   success(
     result?: T,
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): Promise<T | void> | T | void;
   error(error: Error, metadata?: Record<string, unknown>): Promise<void> | void;
   finish(
     status: InstrumentationMetadata["status"],
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): Promise<void> | void;
   run(fn: InstrumentFn<T>): Promise<T>;
 }
@@ -204,6 +204,11 @@ export interface NewRelicProviderOptions {
   endpoint?: string;
   batchSize?: number;
   flushIntervalMs?: number;
+  // Browser agent credentials (for client-side monitoring)
+  accountID?: string;
+  trustKey?: string;
+  agentID?: string;
+  applicationID?: string;
 }
 
 export interface HttpProviderOptions {

@@ -10,6 +10,7 @@ export type { NewRelicProviderOptions } from "../types/index.js";
 
 /**
  * Adapts Aperture events to New Relic's log ingestion API using the HTTP provider.
+ * Also provides browser agent initialization for client-side monitoring.
  */
 export class NewRelicProvider extends HttpProvider {
   /**
@@ -35,6 +36,33 @@ export class NewRelicProvider extends HttpProvider {
   }
 
   /**
+   * Generates the browser agent initialization script for client-side monitoring.
+   * @param {NewRelicProviderOptions} options - Provider options containing browser agent credentials.
+   * @returns {string} HTML script tag for browser agent initialization.
+   */
+  static generateBrowserAgentScript(options: NewRelicProviderOptions): string {
+    if (
+      !options.accountID ||
+      !options.trustKey ||
+      !options.agentID ||
+      !options.applicationID
+    ) {
+      throw new Error(
+        "Browser agent requires accountID, trustKey, agentID, and applicationID"
+      );
+    }
+
+    return `
+<script type="text/javascript">
+;window.NREUM||(NREUM={});NREUM.init={distributed_tracing:{enabled:true},performance:{capture_measures:true},privacy:{cookies_enabled:true},ajax:{deny_list:["bam.nr-data.net"]}};
+
+;NREUM.loader_config={accountID:"${options.accountID}",trustKey:"${options.trustKey}",agentID:"${options.agentID}",licenseKey:"${options.licenseKey}",applicationID:"${options.applicationID}"};
+;NREUM.info={beacon:"bam.nr-data.net",errorBeacon:"bam.nr-data.net",licenseKey:"${options.licenseKey}",applicationID:"${options.applicationID}",sa:1};
+</script>
+<script type="text/javascript" src="https://js-agent.newrelic.com/nr-loader-spa-1.297.1.min.js"></script>`;
+  }
+
+  /**
    * Transforms log or metric events into New Relic's payload format.
    * @param {LogEvent | MetricEvent} event - Event to transform.
    * @param {NewRelicProviderOptions} options - Provider options supplying defaults.
@@ -42,7 +70,7 @@ export class NewRelicProvider extends HttpProvider {
    */
   private static transform(
     event: LogEvent | MetricEvent,
-    options: NewRelicProviderOptions,
+    options: NewRelicProviderOptions
   ): Record<string, unknown> {
     const common = {
       service: options.service,
