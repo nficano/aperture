@@ -55,11 +55,13 @@ export class Aperture {
     this.release = options.release;
     this.runtime = options.runtime;
 
-    if (options.domains) for (const definition of options.domains) this.domainRegistry.register(definition)
-    ;
-    if (options.providers) for (const provider of options.providers) {
-      this.registerProvider(provider);
-    }
+    if (options.domains)
+      for (const definition of options.domains)
+        this.domainRegistry.register(definition);
+    if (options.providers)
+      for (const provider of options.providers) {
+        this.registerProvider(provider);
+      }
   }
 
   /**
@@ -75,6 +77,9 @@ export class Aperture {
     };
 
     try {
+      diagnosticConsole.info?.(
+        `[Aperture] Registering provider ${provider.name}`
+      );
       const setupResult = provider.setup?.(context);
       if (setupResult instanceof Promise) {
         setupResult.catch((error) => {
@@ -92,6 +97,9 @@ export class Aperture {
     }
 
     this.providers.push(provider);
+    diagnosticConsole.info?.(
+      `[Aperture] Provider registered ${provider.name}. Total providers: ${this.providers.length}`
+    );
   }
 
   /**
@@ -150,6 +158,20 @@ export class Aperture {
     }
 
     return new ApertureLogger(config, scope);
+  }
+
+  /**
+   * Emits a metric event to all registered providers that support metrics.
+   * @param {import('../types/index.js').MetricEvent} event - Metric event to forward.
+   * @returns {void}
+   */
+  emitMetric(event: import("../types/index.js").MetricEvent): void {
+    for (const provider of this.providers) {
+      diagnosticConsole.info?.(
+        `[Aperture] emitMetric forwarding to ${provider.name}`
+      );
+      provider.metric?.(event);
+    }
   }
 
   /**

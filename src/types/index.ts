@@ -212,7 +212,11 @@ export interface NewRelicProviderOptions {
   licenseKey: string;
   service: string;
   environment?: string;
+  /** @deprecated Use logEndpoint instead. */
   endpoint?: string;
+  logEndpoint?: string;
+  metricEndpoint?: string;
+  metricApiKey?: string;
   batchSize?: number;
   flushIntervalMs?: number;
   // Browser agent credentials (for client-side monitoring)
@@ -250,4 +254,15 @@ export interface ApertureNuxtOptions {
   runtime?: Record<string, unknown>;
   domains?: DomainDefinition[];
   providers?: ApertureNuxtProviderOptions;
+  tunnel?: {
+    path?: string; // e.g. "/api/aperture"
+    jwtSecret?: string; // HS256 shared secret
+    csrfHeader?: string; // header key to require
+    sampling?: Partial<Record<
+      "log" | "error" | "metric" | "trace" | "rum" | "custom",
+      number
+    >>;
+    rateLimitPerMin?: number;
+    debug?: boolean;
+  };
 }

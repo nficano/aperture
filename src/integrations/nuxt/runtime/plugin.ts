@@ -6,8 +6,8 @@ import { FirebaseProvider } from "../../../providers/FirebaseProvider.js";
 import { SentryProvider } from "../../../providers/SentryProvider.js";
 import { DatadogProvider } from "../../../providers/DatadogProvider.js";
 import { NewRelicProvider } from "../../../providers/NewRelicProvider.js";
-import { createDatadogRumTunnelHandler } from "./rum-tunnel.js";
 import type { ApertureNuxtProviderOptions } from "../module.js";
+import { ApertureClient } from "./client-sdk.js";
 
 const env =
   (globalThis as { process?: { env?: Record<string, string | undefined> } })
@@ -49,9 +49,8 @@ function resolveProviders(
     aperture.registerProvider(new ConsoleProvider(consoleOptions));
   }
 
-  if (!isServer) {
-    return;
-  }
+  // Providers with server-side SDKs only
+  if (!isServer) return;
 
   const sentryConfig = configured.sentry;
   if (isOptionEnabled(sentryConfig) && !existing.has("sentry")) {
@@ -65,54 +64,21 @@ function resolveProviders(
 
   const datadogConfig = configured.datadog;
   if (isOptionEnabled(datadogConfig) && !existing.has("datadog")) {
-    // Inject runtime config values for Datadog credentials
     const runtimeConfig = useRuntimeConfig() as any;
     const enrichedConfig = {
       ...datadogConfig,
       apiKey: runtimeConfig.datadogApiKey || datadogConfig.apiKey,
-      rumApplicationId:
-        runtimeConfig.public?.datadogRumApplicationId ||
-        datadogConfig.rumApplicationId,
-      rumClientToken:
-        runtimeConfig.public?.datadogRumClientToken ||
-        datadogConfig.rumClientToken,
       site: runtimeConfig.public?.datadogSite || datadogConfig.site,
     };
     aperture.registerProvider(new DatadogProvider(enrichedConfig));
-
-    // Register RUM tunnel endpoint if tunneling is enabled
-    if (enrichedConfig.tunnelRum && isServer) {
-      const tunnelEndpoint =
-        enrichedConfig.rumTunnelEndpoint || "/api/datadog/rum";
-
-      if (enrichedConfig.debug) {
-        // eslint-disable-next-line no-console
-        console.debug(
-          `[aperture] Datadog RUM tunneling enabled for endpoint: ${tunnelEndpoint}`
-        );
-      }
-
-      // Note: In a real implementation, you would register this with your Nuxt server
-      // This is a placeholder showing where the endpoint registration would go
-      // You'll need to implement this in your Nuxt server routes
-    }
   }
 
   const newRelicConfig = configured.newRelic;
   if (isOptionEnabled(newRelicConfig) && !existing.has("newrelic")) {
-    // Inject runtime config values for New Relic credentials
     const runtimeConfig = useRuntimeConfig() as any;
     const enrichedConfig = {
       ...newRelicConfig,
       licenseKey: runtimeConfig.newRelicLicenseKey || newRelicConfig.licenseKey,
-      accountID:
-        runtimeConfig.public?.newRelicAccountId || newRelicConfig.accountID,
-      trustKey:
-        runtimeConfig.public?.newRelicTrustKey || newRelicConfig.trustKey,
-      agentID: runtimeConfig.public?.newRelicAgentId || newRelicConfig.agentID,
-      applicationID:
-        runtimeConfig.public?.newRelicApplicationId ||
-        newRelicConfig.applicationID,
     };
     aperture.registerProvider(new NewRelicProvider(enrichedConfig));
   }
@@ -154,113 +120,58 @@ export default defineNuxtPlugin(
 
     const logger = aperture.getLogger();
 
-    // Inject browser monitoring agents on client side
+    // Create client SDK on browser only
+    let client: ApertureClient | undefined;
     if (!isServer) {
-      const runtimeConfig = useRuntimeConfig() as any;
-
-      // Inject Datadog RUM
-      if (apertureConfig.providers?.datadog) {
-        const datadogConfig = apertureConfig.providers.datadog;
-        if (isOptionEnabled(datadogConfig)) {
-          try {
-            const enrichedConfig = {
-              ...datadogConfig,
-              apiKey: runtimeConfig.datadogApiKey || datadogConfig.apiKey,
-              rumApplicationId:
-                runtimeConfig.public?.datadogRumApplicationId ||
-                datadogConfig.rumApplicationId,
-              rumClientToken:
-                runtimeConfig.public?.datadogRumClientToken ||
-                datadogConfig.rumClientToken,
-              site: runtimeConfig.public?.datadogSite || datadogConfig.site,
-            };
-
-            const browserScript =
-              DatadogProvider.generateBrowserRumScript(enrichedConfig);
-            const globalDoc = globalThis as {
-              document?: {
-                createElement: (tag: string) => { innerHTML: string };
-                head: { append: (element: unknown) => void };
-              };
-            };
-            if (globalDoc.document) {
-              const scriptElement = globalDoc.document.createElement("div");
-              scriptElement.innerHTML = browserScript;
-              globalDoc.document.head.append(scriptElement);
-
-              if (enrichedConfig.debug) {
-                // eslint-disable-next-line no-console
-                console.debug(
-                  "[aperture] Datadog RUM script injected into document head"
-                );
-              }
-            }
-          } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn("Failed to initialize Datadog RUM:", error);
+      const tunnelPath = apertureConfig.tunnel?.path || "/api/aperture";
+      const base =
+        globalThis.window !== undefined && globalThis.location
+          ? globalThis.location.origin
+          : "";
+      const globalAny = globalThis as any;
+      const getToken = () => {
+        try {
+          if (typeof globalAny.__apertureGetToken === "function") {
+            return globalAny.__apertureGetToken();
           }
-        }
-      }
-
-      // Inject New Relic browser agent
-      if (apertureConfig.providers?.newRelic) {
-        const newRelicConfig = apertureConfig.providers.newRelic;
-        if (isOptionEnabled(newRelicConfig)) {
-          try {
-            const enrichedConfig = {
-              ...newRelicConfig,
-              licenseKey:
-                runtimeConfig.newRelicLicenseKey || newRelicConfig.licenseKey,
-              accountID:
-                runtimeConfig.public?.newRelicAccountId ||
-                newRelicConfig.accountID,
-              trustKey:
-                runtimeConfig.public?.newRelicTrustKey ||
-                newRelicConfig.trustKey,
-              agentID:
-                runtimeConfig.public?.newRelicAgentId || newRelicConfig.agentID,
-              applicationID:
-                runtimeConfig.public?.newRelicApplicationId ||
-                newRelicConfig.applicationID,
-            };
-
-            const browserScript =
-              NewRelicProvider.generateBrowserAgentScript(enrichedConfig);
-            // Inject the script into the document head
-            const globalDoc = globalThis as {
-              document?: {
-                createElement: (tag: string) => { innerHTML: string };
-                head: { append: (element: unknown) => void };
-              };
-            };
-            if (globalDoc.document) {
-              const scriptElement = globalDoc.document.createElement("div");
-              scriptElement.innerHTML = browserScript;
-              globalDoc.document.head.append(scriptElement);
-
-              if (enrichedConfig.debug) {
-                // eslint-disable-next-line no-console
-                console.debug(
-                  "[aperture] New Relic browser agent script injected into document head"
-                );
-              }
-            }
-          } catch (error) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              "Failed to initialize New Relic browser agent:",
-              error
-            );
-          }
-        }
-      }
+        } catch {}
+        return null;
+      };
+      client = new ApertureClient({
+        url: base ? new URL(tunnelPath, base).toString() : tunnelPath,
+        getToken,
+      });
     }
 
-    return {
-      provide: {
-        aperture,
-        apertureLogger: logger,
-      },
+    const apertureApi = {
+      // stable API regardless of providers
+      capture: (e: any) => client?.capture(e),
+      log: (
+        level: "debug" | "info" | "warn" | "error",
+        message: string,
+        data?: Record<string, unknown>,
+        tags?: Record<string, any>
+      ) => client?.log(level, message, data, tags),
+      error: (
+        err: any,
+        ctx?: {
+          message?: string;
+          data?: Record<string, unknown>;
+          tags?: Record<string, any>;
+        }
+      ) => client?.error(err, ctx),
+      metric: (
+        name: string,
+        value?: number,
+        unit?: string,
+        tags?: Record<string, any>
+      ) => client?.metric(name, value, unit, tags),
+      trace: (span: Parameters<ApertureClient["trace"]>[0]) =>
+        client?.trace(span),
+      rum: (data: Parameters<ApertureClient["rum"]>[0]) => client?.rum(data),
+      flush: () => client?.flush(),
     };
+
+    return { provide: { aperture, apertureLogger: logger, apertureApi } };
   }
 );

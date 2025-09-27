@@ -15,6 +15,11 @@ type TimerControls = {
 };
 
 const timers = globalThis as TimerControls;
+const scheduleTimeout = (
+  globalThis as {
+    setTimeout?: (handler: () => void, timeout?: number) => TimerHandle;
+  }
+).setTimeout;
 
 /**
  * Calls `unref` on a timer handle when the method exists.
@@ -34,8 +39,16 @@ const unrefTimer = (handle: TimerHandle | null): void => {
 
 type FetchLike = (
   input: string,
-  init?: { method?: string; headers?: Record<string, string>; body?: string },
+  init?: { method?: string; headers?: Record<string, string>; body?: string }
 ) => Promise<unknown>;
+
+type FetchResponse = {
+  ok?: boolean;
+  status?: number;
+  statusText?: string;
+  headers?: { get(name: string): string | null };
+  text?: () => Promise<string>;
+};
 
 const httpFetch = (globalThis as { fetch?: FetchLike }).fetch;
 
@@ -50,8 +63,10 @@ export class HttpProvider implements ApertureProvider {
   private readonly onError?: HttpProviderOptions["onError"];
   private readonly batchSize: number;
   private readonly debug: boolean;
+  private readonly hasInterval: boolean;
   private buffer: Array<Record<string, unknown>> = [];
   private timer: TimerHandle | null = null;
+  private pendingImmediateFlush = false;
 
   /**
    * Creates a new HTTP provider with batching and optional transforms.
@@ -67,9 +82,10 @@ export class HttpProvider implements ApertureProvider {
     this.debug = options.debug ?? false;
 
     const scheduleInterval = timers.setInterval;
+    this.hasInterval = Boolean(options.flushIntervalMs && scheduleInterval);
 
-    if (options.flushIntervalMs && scheduleInterval) {
-      const interval = scheduleInterval(() => {
+    if (this.hasInterval) {
+      const interval = scheduleInterval?.(() => {
         this.flush().catch(() => {});
       }, options.flushIntervalMs);
       unrefTimer(interval ?? null);
@@ -83,13 +99,16 @@ export class HttpProvider implements ApertureProvider {
    * @returns {void}
    */
   log(event: LogEvent): void {
-    if (this.debug) {
-      console.debug(`[${this.name}] Log event:`, {
+    const verbose =
+      this.debug || this.name === "datadog" || this.name.includes("newrelic");
+    if (verbose) {
+      console.log(`[${this.name}] log() called`, {
         message: event.message,
         level: event.level,
         domain: event.domain,
         impact: event.impact,
         tags: event.tags,
+        bufferLength: this.buffer.length,
       });
     }
     this.enqueue(event);
@@ -101,14 +120,17 @@ export class HttpProvider implements ApertureProvider {
    * @returns {void}
    */
   metric(event: MetricEvent): void {
-    if (this.debug) {
-      console.debug(`[${this.name}] Metric event:`, {
+    const verbose =
+      this.debug || this.name === "datadog" || this.name.includes("newrelic");
+    if (verbose) {
+      console.log(`[${this.name}] metric() called`, {
         name: event.name,
         value: event.value,
         unit: event.unit,
         domain: event.domain,
         impact: event.impact,
         tags: event.tags,
+        bufferLength: this.buffer.length,
       });
     }
     this.enqueue(event);
@@ -123,9 +145,22 @@ export class HttpProvider implements ApertureProvider {
     if (this.buffer.length === 0) return;
 
     const payload = this.buffer.splice(0);
+    const shouldLogVerbose =
+      this.debug || this.name === "datadog" || this.name.includes("newrelic");
 
     if (this.debug) {
-      console.debug(`[${this.name}] Flushing ${payload.length} events to ${this.endpoint}`);
+      console.log(
+        `[${this.name}] Flushing ${payload.length} events to ${this.endpoint}`
+      );
+    }
+
+    if (shouldLogVerbose) {
+      console.log(`[${this.name}] Request payload`, {
+        endpoint: this.endpoint,
+        headers: this.headers,
+        size: payload.length,
+        body: payload,
+      });
     }
 
     try {
@@ -133,14 +168,32 @@ export class HttpProvider implements ApertureProvider {
         throw new Error("global fetch implementation not available");
       }
 
-      await httpFetch(this.endpoint, {
+      const response = (await httpFetch(this.endpoint, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify(payload),
-      });
+      })) as FetchResponse | undefined;
+
+      if (shouldLogVerbose) {
+        let responseBody: string | undefined;
+        if (typeof response?.text === "function") {
+          try {
+            responseBody = await response.text();
+          } catch {}
+        }
+
+        console.log(`[${this.name}] Response`, {
+          status: response?.status,
+          statusText: response?.statusText,
+          ok: response?.ok,
+          body: responseBody,
+        });
+      }
 
       if (this.debug) {
-        console.debug(`[${this.name}] Successfully sent ${payload.length} events`);
+        console.log(
+          `[${this.name}] Successfully sent ${payload.length} events`
+        );
       }
     } catch (error) {
       if (this.debug) {
@@ -170,11 +223,77 @@ export class HttpProvider implements ApertureProvider {
    */
   private enqueue(event: LogEvent | MetricEvent): void {
     const serialized = this.transform?.(event) ?? this.serialize(event);
+    const verbose =
+      this.debug || this.name === "datadog" || this.name.includes("newrelic");
+    if (verbose) {
+      console.log(`[${this.name}] enqueue`, {
+        bufferLengthBefore: this.buffer.length,
+        batchSize: this.batchSize,
+      });
+    }
+
     this.buffer.push(serialized);
 
     if (this.buffer.length >= this.batchSize) {
+      if (verbose) {
+        console.log(
+          `[${this.name}] buffer reached batch size, flushing immediately`,
+          {
+            bufferLength: this.buffer.length,
+          }
+        );
+      }
       this.flush().catch(() => {});
+    } else {
+      this.scheduleImmediateFlush();
     }
+  }
+
+  /**
+   * Schedules an immediate flush on the next microtask when no interval is configured.
+   * @returns {void}
+   */
+  private scheduleImmediateFlush(): void {
+    if (
+      this.hasInterval ||
+      this.pendingImmediateFlush ||
+      this.buffer.length === 0
+    ) {
+      return;
+    }
+
+    const verbose =
+      this.debug || this.name === "datadog" || this.name.includes("newrelic");
+    if (verbose) {
+      console.log(`[${this.name}] scheduling immediate flush`, {
+        bufferLength: this.buffer.length,
+      });
+    }
+
+    this.pendingImmediateFlush = true;
+    const runFlush = () => {
+      this.pendingImmediateFlush = false;
+      if (verbose) {
+        console.log(`[${this.name}] running scheduled flush`, {
+          bufferLength: this.buffer.length,
+        });
+      }
+      this.flush().catch(() => {});
+    };
+
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(runFlush);
+      return;
+    }
+
+    if (typeof Promise === "function") {
+      Promise.resolve()
+        .then(runFlush)
+        .catch(() => {});
+      return;
+    }
+
+    scheduleTimeout?.(() => runFlush(), 0);
   }
 
   /**

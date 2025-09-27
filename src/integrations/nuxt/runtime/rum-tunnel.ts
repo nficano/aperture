@@ -7,8 +7,8 @@ import type { DatadogProviderOptions } from "../../../types/index.js";
 
 /**
  * Creates a server-side handler for tunneling Datadog RUM data
- * @param {DatadogProviderOptions} options - Datadog provider options
- * @returns {Function} Nuxt server handler function
+ * @param options - Datadog provider options
+ * @returns Nuxt server handler function
  */
 export function createDatadogRumTunnelHandler(options: DatadogProviderOptions) {
   return async (event: any) => {

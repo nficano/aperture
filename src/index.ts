@@ -13,3 +13,6 @@ export * from "./providers/NewRelicProvider.js";
 
 // Server-side utilities for Nuxt (separate from module to avoid @nuxt/kit imports in server runtime)
 export * from "./integrations/nuxt/server.js";
+
+// Tunnel core types (optional external use)
+export * from "./tunnel/types.js";
