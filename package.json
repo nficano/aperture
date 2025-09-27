@@ -44,7 +44,8 @@
   "peerDependencies": {
     "@sentry/node": "^7.0.0",
     "firebase-admin": "^12.0.0",
-    "@nuxt/kit": "^3.0.0"
+    "@nuxt/kit": "^3.0.0",
+    "h3": "^1.0.0"
   },
   "peerDependenciesMeta": {
     "@sentry/node": {
