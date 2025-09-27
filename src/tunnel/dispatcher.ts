@@ -13,6 +13,34 @@ type BackoffState = {
 
 const now = () => Date.now();
 
+const buildContext = (
+  envelope: TelemetryEnvelope,
+  extra?: Record<string, unknown>,
+): Record<string, unknown> => {
+  const context: Record<string, unknown> = {};
+
+  if (envelope.instanceId) {
+    context.instanceId = envelope.instanceId;
+  }
+
+  if (envelope.app && Object.keys(envelope.app).length > 0) {
+    context.app = envelope.app;
+  }
+
+  if (envelope.ctx && Object.keys(envelope.ctx).length > 0) {
+    context.runtime = envelope.ctx;
+  }
+
+  if ("data" in envelope && envelope.data) {
+    context.data = envelope.data;
+  }
+
+  return {
+    ...context,
+    ...(extra ?? {}),
+  };
+};
+
 /**
  * Simple in-memory fan-out dispatcher with retries, exponential backoff and circuit breaker.
  */
@@ -122,7 +150,8 @@ export class TunnelDispatcher {
         const lvl = envelope.level;
         const msg = envelope.message;
         logger[lvl](msg, {
-          context: envelope as any,
+          context: buildContext(envelope),
+          tags: envelope.tags,
         });
         break;
       }
@@ -131,9 +160,18 @@ export class TunnelDispatcher {
           message: envelope.message,
           name: envelope.name,
         });
+        const err = envelope.stack ? new Error(envelope.message) : undefined;
+        if (err && envelope.stack) {
+          err.stack = envelope.stack;
+          if (envelope.name) err.name = envelope.name;
+        }
         logger.error(envelope.message, {
-          context: envelope as any,
-          error: envelope.stack ? new Error(envelope.message) : undefined,
+          context: buildContext(envelope, {
+            name: envelope.name,
+            stack: envelope.stack,
+          }),
+          error: err,
+          tags: envelope.tags,
         });
         break;
       }
@@ -152,7 +190,7 @@ export class TunnelDispatcher {
           impact: undefined,
           domain: undefined,
           instrumentation: undefined,
-          context: envelope.data,
+          context: buildContext(envelope),
         });
         break;
       }
@@ -161,18 +199,17 @@ export class TunnelDispatcher {
           name: envelope.name,
           traceId: envelope.traceId,
         });
-        // Map to logs for now; adapters can translate further
-        logger.info(`trace ${envelope.name}`, {
-          context: {
-            traceId: envelope.traceId,
-            spanId: envelope.spanId,
-            parentSpanId: envelope.parentSpanId,
-            startTime: envelope.startTime,
-            endTime: envelope.endTime,
-            status: envelope.status,
-            attributes: envelope.attributes,
-          },
+        this.aperture.emitTrace({
+          name: envelope.name,
+          traceId: envelope.traceId,
+          spanId: envelope.spanId,
+          parentSpanId: envelope.parentSpanId,
+          status: envelope.status ?? "unknown",
+          startTime: new Date(envelope.startTime),
+          endTime: envelope.endTime ? new Date(envelope.endTime) : undefined,
+          attributes: envelope.attributes,
           tags: envelope.tags,
+          context: buildContext(envelope),
         });
         break;
       }
@@ -182,11 +219,11 @@ export class TunnelDispatcher {
           webVitals: envelope.webVitals,
         });
         logger.info("rum", {
-          context: {
+          context: buildContext(envelope, {
             webVitals: envelope.webVitals,
             navTiming: envelope.navTiming,
             url: envelope.url,
-          },
+          }),
           tags: envelope.tags,
         });
         break;
@@ -196,7 +233,7 @@ export class TunnelDispatcher {
           event: envelope.event,
         });
         logger.info(`custom:${envelope.event}`, {
-          context: envelope.data,
+          context: buildContext(envelope),
           tags: envelope.tags,
         });
         break;

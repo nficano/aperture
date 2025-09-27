@@ -8,6 +8,8 @@ import type {
   Logger as LoggerInterface,
   LoggerConfig,
   LogOptions,
+  ProviderSupportLevel,
+  RegisteredProvider,
   TagRecord,
 } from "../../types/index.js";
 import { ContextManager } from "../context/ContextManager.js";
@@ -16,6 +18,45 @@ const globalEnv =
   (globalThis as { process?: { env?: Record<string, string | undefined> } })
     .process?.env ?? {};
 
+const supportsLogs = (provider: RegisteredProvider): boolean => {
+  const level: ProviderSupportLevel | undefined = provider.supports.logs;
+  return (
+    level === "full" ||
+    level === "limited" ||
+    typeof provider.instance.log === "function"
+  );
+};
+
+const normalizeProviders = (
+  providers?: (RegisteredProvider | ApertureProvider)[],
+): RegisteredProvider[] => {
+  if (!providers) return [];
+
+  return providers.map((provider) => {
+    if (
+      provider &&
+      typeof provider === "object" &&
+      "instance" in provider &&
+      "supports" in provider
+    ) {
+      return provider as RegisteredProvider;
+    }
+
+    const instance = provider as ApertureProvider;
+    return {
+      name: instance.name,
+      instance,
+      channel: "server",
+      supports: {
+        logs: typeof instance.log === "function" ? "full" : "none",
+        metrics: typeof instance.metric === "function" ? "full" : "none",
+        traces: typeof instance.trace === "function" ? "full" : "none",
+      },
+      fallbacks: {},
+    } satisfies RegisteredProvider;
+  });
+};
+
 export type { Logger, LoggerConfig, LogOptions } from "../../types/index.js";
 
 /**
@@ -23,7 +64,7 @@ export type { Logger, LoggerConfig, LogOptions } from "../../types/index.js";
  */
 export class ApertureLogger implements LoggerInterface {
   private readonly environment: "development" | "production" | "test";
-  private readonly providers: ApertureProvider[];
+  private readonly providers: RegisteredProvider[];
   private readonly defaultTags: TagRecord | undefined;
   private readonly scope: ApertureContext;
 
@@ -35,7 +76,9 @@ export class ApertureLogger implements LoggerInterface {
   constructor(config?: LoggerConfig, scope?: ApertureContext) {
     this.environment =
       config?.environment ?? (globalEnv.NODE_ENV as any) ?? "development";
-    this.providers = config?.providers ?? [];
+    this.providers = normalizeProviders(
+      config?.providers as (RegisteredProvider | ApertureProvider)[] | undefined,
+    );
     this.defaultTags = config?.defaultTags;
     this.scope = {
       ...scope,
@@ -188,7 +231,8 @@ export class ApertureLogger implements LoggerInterface {
     };
 
     for (const provider of this.providers) {
-      provider.log?.(event);
+      if (!supportsLogs(provider)) continue;
+      provider.instance.log?.(event);
     }
   }
 }

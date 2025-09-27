@@ -6,6 +6,12 @@ import { FirebaseProvider } from "../../../providers/FirebaseProvider.js";
 import { SentryProvider } from "../../../providers/SentryProvider.js";
 import { DatadogProvider } from "../../../providers/DatadogProvider.js";
 import { NewRelicProvider } from "../../../providers/NewRelicProvider.js";
+import { getProviderManifest } from "../../../providers/capabilities.js";
+import type {
+  ApertureProvider,
+  ConsoleProviderOptions,
+  ProviderFallbackConfig,
+} from "../../../types/index.js";
 import type { ApertureNuxtProviderOptions } from "../module.js";
 import { ApertureClient } from "./client-sdk.js";
 
@@ -26,6 +32,60 @@ type ApertureGlobal = Record<PropertyKey, unknown> & { window?: unknown };
 const isOptionEnabled = <T>(value: T | false | undefined): value is T =>
   value !== undefined && value !== false;
 
+type ProviderChannel = "client" | "server";
+
+const mergeFallbacks = (
+  base?: ProviderFallbackConfig,
+  overrides?: ProviderFallbackConfig,
+): ProviderFallbackConfig | undefined => {
+  const merged = {
+    ...(base ?? {}),
+    ...(overrides ?? {}),
+  } satisfies ProviderFallbackConfig;
+
+  const entries = Object.entries(merged).filter(([, value]) => value !== undefined);
+  if (entries.length === 0) {
+    return undefined;
+  }
+
+  return Object.fromEntries(entries) as ProviderFallbackConfig;
+};
+
+const extractFallbackOverrides = (
+  options?: { forceLogMetrics?: boolean; forceLogTraces?: boolean }
+): ProviderFallbackConfig | undefined => {
+  if (!options) return undefined;
+  const overrides: ProviderFallbackConfig = {};
+  if (typeof options.forceLogMetrics === "boolean") {
+    overrides.forceLogMetrics = options.forceLogMetrics;
+  }
+  if (typeof options.forceLogTraces === "boolean") {
+    overrides.forceLogTraces = options.forceLogTraces;
+  }
+  return Object.keys(overrides).length > 0 ? overrides : undefined;
+};
+
+const registerProviderWithManifest = (
+  aperture: Aperture,
+  name: string,
+  instance: ApertureProvider,
+  channel: ProviderChannel,
+  userFallbacks?: ProviderFallbackConfig,
+): void => {
+  const manifest = getProviderManifest(name);
+  const supports =
+    channel === "server"
+      ? manifest?.capabilities.server
+      : manifest?.capabilities.client;
+  const fallbacks = mergeFallbacks(manifest?.defaultFallbacks, userFallbacks);
+
+  aperture.registerProvider(instance, {
+    channel,
+    supports,
+    ...(fallbacks ? { fallbacks } : {}),
+  });
+};
+
 /**
  * Registers enabled providers on the shared Aperture instance.
  * @param {Aperture} aperture - Aperture instance used for registration.
@@ -40,13 +100,24 @@ function resolveProviders(
 ) {
   const configured = providers ?? {};
   const existing = new Set(aperture.listProviders());
+  const channel: ProviderChannel = isServer ? "server" : "client";
 
   if (configured.console !== false && !existing.has("console")) {
-    const consoleOptions =
+    const resolvedConsoleOptions =
       configured.console === true || configured.console === undefined
         ? {}
         : configured.console;
-    aperture.registerProvider(new ConsoleProvider(consoleOptions));
+    const fallbackOverrides =
+      typeof resolvedConsoleOptions === "object"
+        ? extractFallbackOverrides(resolvedConsoleOptions)
+        : undefined;
+    registerProviderWithManifest(
+      aperture,
+      "console",
+      new ConsoleProvider(resolvedConsoleOptions as ConsoleProviderOptions),
+      channel,
+      fallbackOverrides,
+    );
   }
 
   // Providers with server-side SDKs only
@@ -54,12 +125,26 @@ function resolveProviders(
 
   const sentryConfig = configured.sentry;
   if (isOptionEnabled(sentryConfig) && !existing.has("sentry")) {
-    aperture.registerProvider(new SentryProvider(sentryConfig));
+    const fallbackOverrides = extractFallbackOverrides(sentryConfig);
+    registerProviderWithManifest(
+      aperture,
+      "sentry",
+      new SentryProvider(sentryConfig),
+      "server",
+      fallbackOverrides,
+    );
   }
 
   const firebaseConfig = configured.firebase;
   if (isOptionEnabled(firebaseConfig) && !existing.has("firebase")) {
-    aperture.registerProvider(new FirebaseProvider(firebaseConfig));
+    const fallbackOverrides = extractFallbackOverrides(firebaseConfig);
+    registerProviderWithManifest(
+      aperture,
+      "firebase",
+      new FirebaseProvider(firebaseConfig),
+      "server",
+      fallbackOverrides,
+    );
   }
 
   const datadogConfig = configured.datadog;
@@ -70,7 +155,14 @@ function resolveProviders(
       apiKey: runtimeConfig.datadogApiKey || datadogConfig.apiKey,
       site: runtimeConfig.public?.datadogSite || datadogConfig.site,
     };
-    aperture.registerProvider(new DatadogProvider(enrichedConfig));
+    const fallbackOverrides = extractFallbackOverrides(datadogConfig);
+    registerProviderWithManifest(
+      aperture,
+      "datadog",
+      new DatadogProvider(enrichedConfig),
+      "server",
+      fallbackOverrides,
+    );
   }
 
   const newRelicConfig = configured.newRelic;
@@ -80,7 +172,14 @@ function resolveProviders(
       ...newRelicConfig,
       licenseKey: runtimeConfig.newRelicLicenseKey || newRelicConfig.licenseKey,
     };
-    aperture.registerProvider(new NewRelicProvider(enrichedConfig));
+    const fallbackOverrides = extractFallbackOverrides(newRelicConfig);
+    registerProviderWithManifest(
+      aperture,
+      "newrelic",
+      new NewRelicProvider(enrichedConfig),
+      "server",
+      fallbackOverrides,
+    );
   }
 }
 

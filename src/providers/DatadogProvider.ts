@@ -4,6 +4,7 @@ import type {
   HttpProviderOptions,
   LogEvent,
   MetricEvent,
+  TraceEvent,
 } from "../types/index.js";
 
 type DatadogPayload = Record<string, unknown>;
@@ -130,7 +131,7 @@ DD_RUM.onReady(function() {
    * @returns {Record<string, unknown>} Datadog-compatible payload.
    */
   private static transform(
-    event: LogEvent | MetricEvent,
+    event: LogEvent | MetricEvent | TraceEvent,
     options: DatadogProviderOptions
   ): DatadogPayload {
     const tags = {
@@ -147,10 +148,28 @@ DD_RUM.onReady(function() {
     const attributes: Record<string, unknown> = {
       ...event.context,
       instrumentation: event.instrumentation,
-      runtime: (event as LogEvent).runtime,
-      value: "value" in event ? event.value : undefined,
-      unit: "unit" in event ? event.unit : undefined,
     };
+
+    if ("runtime" in event) {
+      attributes.runtime = event.runtime;
+    }
+
+    if ("value" in event) {
+      attributes.value = event.value;
+      attributes.unit = (event as MetricEvent).unit;
+    }
+
+    if ("traceId" in event) {
+      attributes.trace = {
+        traceId: event.traceId,
+        spanId: event.spanId,
+        parentSpanId: event.parentSpanId,
+        status: event.status,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        attributes: event.attributes,
+      };
+    }
 
     const payload: DatadogPayload = {
       ddsource: options.ddsource ?? "aperture",
@@ -158,11 +177,26 @@ DD_RUM.onReady(function() {
       ddtags,
       level: "level" in event ? event.level : "info",
       environment: options.environment,
-      message: "message" in event ? event.message : event.name,
+      message:
+        "message" in event
+          ? event.message
+          : "traceId" in event
+          ? `trace:${event.name}`
+          : event.name,
       timestamp:
-        event.timestamp instanceof Date
+        "timestamp" in event && event.timestamp instanceof Date
           ? event.timestamp.toISOString()
-          : event.timestamp,
+          : "timestamp" in event && event.timestamp
+          ? event.timestamp
+          : "endTime" in event && event.endTime instanceof Date
+          ? event.endTime.toISOString()
+          : "endTime" in event && event.endTime
+          ? event.endTime
+          : "startTime" in event && event.startTime instanceof Date
+          ? event.startTime.toISOString()
+          : "startTime" in event && event.startTime
+          ? event.startTime
+          : new Date().toISOString(),
       attributes,
     };
 

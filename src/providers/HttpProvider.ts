@@ -3,6 +3,7 @@ import type {
   HttpProviderOptions,
   LogEvent,
   MetricEvent,
+  TraceEvent,
 } from "../types/index.js";
 
 export type { HttpProviderOptions } from "../types/index.js";
@@ -137,6 +138,27 @@ export class HttpProvider implements ApertureProvider {
   }
 
   /**
+   * Queues a trace event for batched delivery.
+   * @param {TraceEvent} event - Trace event to enqueue.
+   * @returns {void}
+   */
+  trace(event: TraceEvent): void {
+    const verbose =
+      this.debug || this.name === "datadog" || this.name.includes("newrelic");
+    if (verbose) {
+      console.log(`[${this.name}] trace() called`, {
+        name: event.name,
+        traceId: event.traceId,
+        spanId: event.spanId,
+        parentSpanId: event.parentSpanId,
+        status: event.status,
+        bufferLength: this.buffer.length,
+      });
+    }
+    this.enqueue(event);
+  }
+
+  /**
    * Flushes the pending buffer to the configured HTTP endpoint.
    * @returns {Promise<void>} Resolves when the network request completes or the buffer is empty.
    * @throws {Error} When no global fetch implementation is available.
@@ -217,11 +239,11 @@ export class HttpProvider implements ApertureProvider {
   }
 
   /**
-   * Serializes and stores a log or metric event in the local buffer.
-   * @param {LogEvent | MetricEvent} event - Event to enqueue.
+   * Serializes and stores a log, metric, or trace event in the local buffer.
+   * @param {LogEvent | MetricEvent | TraceEvent} event - Event to enqueue.
    * @returns {void}
    */
-  private enqueue(event: LogEvent | MetricEvent): void {
+  private enqueue(event: LogEvent | MetricEvent | TraceEvent): void {
     const serialized = this.transform?.(event) ?? this.serialize(event);
     const verbose =
       this.debug || this.name === "datadog" || this.name.includes("newrelic");
@@ -297,17 +319,36 @@ export class HttpProvider implements ApertureProvider {
   }
 
   /**
-   * Converts a log or metric event into a JSON-serializable payload.
-   * @param {LogEvent | MetricEvent} payload - Event to serialize.
+   * Converts a log, metric, or trace event into a JSON-serializable payload.
+   * @param {LogEvent | MetricEvent | TraceEvent} payload - Event to serialize.
    * @returns {Record<string, unknown>} Plain object suitable for transmission.
    */
-  private serialize(payload: LogEvent | MetricEvent): Record<string, unknown> {
-    return {
+  private serialize(
+    payload: LogEvent | MetricEvent | TraceEvent,
+  ): Record<string, unknown> {
+    const base: Record<string, unknown> = {
       ...payload,
-      timestamp:
+    };
+
+    if ("timestamp" in payload) {
+      base.timestamp =
         payload.timestamp instanceof Date
           ? payload.timestamp.toISOString()
-          : payload.timestamp,
-    };
+          : payload.timestamp;
+    }
+
+    if ("startTime" in payload) {
+      base.startTime = payload.startTime instanceof Date
+        ? payload.startTime.toISOString()
+        : payload.startTime;
+    }
+
+    if ("endTime" in payload && payload.endTime) {
+      base.endTime = payload.endTime instanceof Date
+        ? payload.endTime.toISOString()
+        : payload.endTime;
+    }
+
+    return base;
   }
 }

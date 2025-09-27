@@ -77,11 +77,17 @@ declare module "#app" {
     $config: RuntimeConfigBase;
     $aperture: import("../core/Aperture.js").Aperture;
     $apertureLogger: import("../core/logger/Logger.js").Logger;
+    $apertureApi: import(
+      "../integrations/nuxt/runtime/composables/useAperture.js"
+    ).ApertureClientApi;
   }
 
   export interface ComponentCustomProperties {
     $aperture: import("../core/Aperture.js").Aperture;
     $apertureLogger: import("../core/logger/Logger.js").Logger;
+    $apertureApi: import(
+      "../integrations/nuxt/runtime/composables/useAperture.js"
+    ).ApertureClientApi;
   }
 
   /**
@@ -105,4 +111,8 @@ declare module "#imports" {
    * @returns {T} Runtime configuration object.
    */
   export function useRuntimeConfig<T = Record<string, unknown>>(): T;
+
+  export function useAperture(): import(
+    "../integrations/nuxt/runtime/composables/useAperture.js"
+  ).UseApertureResult;
 }

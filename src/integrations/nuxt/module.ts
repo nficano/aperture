@@ -3,6 +3,7 @@ import {
   addPlugin,
   createResolver,
   addServerHandler,
+  addImportsDir,
 } from "@nuxt/kit";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -88,15 +89,21 @@ export default defineNuxtModule<ApertureNuxtOptions>({
     );
 
     // Register the POST tunnel intake handler
-    addServerHandler({
-      route: tunnelPath,
-      method: "all",
-      handler: resolver.resolve("./runtime/tunnel-handler"),
-    });
+    if (typeof addServerHandler === "function") {
+      addServerHandler({
+        route: tunnelPath,
+        method: "all",
+        handler: resolver.resolve("./runtime/tunnel-handler"),
+      });
+    }
 
     addPlugin({
       src: resolver.resolve("./runtime/plugin"),
       mode: "all",
     });
+
+    if (typeof addImportsDir === "function") {
+      addImportsDir(resolver.resolve("./runtime/composables"));
+    }
   },
 });

@@ -8,10 +8,14 @@ describe('Nuxt module', () => {
     const addPlugin = vi.fn();
     const resolve = vi.fn().mockReturnValue('/plugin-path');
     const hook = vi.fn();
+    const addServerHandler = vi.fn();
+    const addImportsDir = vi.fn();
 
     vi.doMock('@nuxt/kit', () => ({
       defineNuxtModule: (config: any) => config,
       addPlugin,
+      addServerHandler,
+      addImportsDir,
       createResolver: () => ({ resolve }),
     }), { virtual: true });
     vi.resetModules();
@@ -39,7 +43,7 @@ describe('Nuxt module', () => {
       nitroHandler?.(nitroConfig);
 
       // Assert
-      expect(nuxt.options.runtimeConfig.aperture).toEqual({
+      expect(nuxt.options.runtimeConfig.aperture).toMatchObject({
         environment: 'production',
         defaultTags: { stage: 'beta' },
         release: '1.0.0',
@@ -47,13 +51,29 @@ describe('Nuxt module', () => {
         domains: [{ name: 'app' }],
         providers: { console: true },
       });
-      expect(nitroConfig.runtimeConfig.aperture).toEqual({
+      expect(nuxt.options.runtimeConfig.aperture.tunnel).toEqual({
+        path: '/api/aperture',
+        jwtSecret: undefined,
+        csrfHeader: undefined,
+        sampling: undefined,
+        rateLimitPerMin: undefined,
+        debug: undefined,
+      });
+      expect(nitroConfig.runtimeConfig.aperture).toMatchObject({
         release: '1.0.0',
         environment: 'production',
         defaultTags: { stage: 'beta' },
         runtime: { region: 'us' },
         domains: [{ name: 'app' }],
         providers: { console: true },
+      });
+      expect(nitroConfig.runtimeConfig.aperture.tunnel).toEqual({
+        path: '/api/aperture',
+        jwtSecret: undefined,
+        csrfHeader: undefined,
+        sampling: undefined,
+        rateLimitPerMin: undefined,
+        debug: undefined,
       });
       expect(addPlugin).toHaveBeenCalledWith({ src: '/plugin-path', mode: 'all' });
     } finally {
@@ -65,10 +85,14 @@ describe('Nuxt module', () => {
     // Arrange
     const addPlugin = vi.fn();
     const hook = vi.fn();
+    const addServerHandler = vi.fn();
+    const addImportsDir = vi.fn();
 
     vi.doMock('@nuxt/kit', () => ({
       defineNuxtModule: (config: any) => config,
       addPlugin,
+      addServerHandler,
+      addImportsDir,
       createResolver: () => ({ resolve: vi.fn() }),
     }), { virtual: true });
     vi.resetModules();
@@ -91,10 +115,14 @@ describe('Nuxt module', () => {
     const addPlugin = vi.fn();
     const resolve = vi.fn().mockReturnValue('/plugin-path');
     const hook = vi.fn();
+    const addServerHandler = vi.fn();
+    const addImportsDir = vi.fn();
 
     vi.doMock('@nuxt/kit', () => ({
       defineNuxtModule: (config: any) => config,
       addPlugin,
+      addServerHandler,
+      addImportsDir,
       createResolver: () => ({ resolve }),
     }), { virtual: true });
     vi.resetModules();
@@ -112,9 +140,25 @@ describe('Nuxt module', () => {
       domains: [],
       providers: {},
     });
+    expect(nuxt.options.runtimeConfig.aperture.tunnel).toEqual({
+      path: '/api/aperture',
+      jwtSecret: undefined,
+      csrfHeader: undefined,
+      sampling: undefined,
+      rateLimitPerMin: undefined,
+      debug: undefined,
+    });
     expect(nitroConfig.runtimeConfig.aperture).toMatchObject({
       domains: [],
       providers: {},
+    });
+    expect(nitroConfig.runtimeConfig.aperture.tunnel).toEqual({
+      path: '/api/aperture',
+      jwtSecret: undefined,
+      csrfHeader: undefined,
+      sampling: undefined,
+      rateLimitPerMin: undefined,
+      debug: undefined,
     });
   });
 });

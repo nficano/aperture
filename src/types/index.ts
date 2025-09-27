@@ -70,6 +70,22 @@ export interface MetricEvent {
   context?: Record<string, unknown>;
 }
 
+export interface TraceEvent {
+  name: string;
+  traceId: string;
+  spanId: string;
+  parentSpanId?: string;
+  status?: "ok" | "error" | "unknown";
+  startTime: Date;
+  endTime?: Date;
+  attributes?: Record<string, string | number | boolean | null>;
+  domain?: Domain;
+  impact?: ImpactType;
+  tags?: TagRecord;
+  instrumentation?: InstrumentationMetadata;
+  context?: Record<string, unknown>;
+}
+
 export interface DomainDefinition {
   name: Domain;
   description?: string;
@@ -83,11 +99,47 @@ export interface ProviderContext {
   runtime?: Record<string, unknown>;
 }
 
+export type ProviderChannel = "client" | "server";
+
+export type ProviderSupportLevel = "full" | "limited" | "none";
+
+export interface ProviderSupportMatrix {
+  logs?: ProviderSupportLevel;
+  metrics?: ProviderSupportLevel;
+  traces?: ProviderSupportLevel;
+}
+
+export interface ProviderCapabilities {
+  client?: ProviderSupportMatrix;
+  server?: ProviderSupportMatrix;
+}
+
+export interface ProviderFallbackConfig {
+  forceLogMetrics?: boolean;
+  forceLogTraces?: boolean;
+  fallbackToClient?: boolean;
+}
+
+export interface RegisteredProvider {
+  name: string;
+  instance: ApertureProvider;
+  channel: ProviderChannel;
+  supports: ProviderSupportMatrix;
+  fallbacks: ProviderFallbackConfig;
+}
+
+export interface RegisterProviderOptions {
+  channel?: ProviderChannel;
+  supports?: ProviderSupportMatrix;
+  fallbacks?: ProviderFallbackConfig;
+}
+
 export interface ApertureProvider {
   name: string;
   setup?(context: ProviderContext): Promise<void> | void;
   log?(event: LogEvent): Promise<void> | void;
   metric?(event: MetricEvent): Promise<void> | void;
+  trace?(event: TraceEvent): Promise<void> | void;
   flush?(): Promise<void> | void;
   shutdown?(): Promise<void> | void;
 }
@@ -103,7 +155,7 @@ export type ProviderFactory = (
 
 export interface LoggerConfig {
   environment?: "development" | "production" | "test";
-  providers?: ApertureProvider[];
+  providers?: RegisteredProvider[] | ApertureProvider[];
   defaultTags?: TagRecord;
 }
 
@@ -163,20 +215,31 @@ export interface ApertureOptions {
   release?: string;
   runtime?: Record<string, unknown>;
   domains?: DomainDefinition[];
-  providers?: ApertureProvider[];
+  providers?: ProviderRegistrationInput[];
 }
+
+export type ProviderRegistrationInput =
+  | ApertureProvider
+  | {
+      provider: ApertureProvider;
+      options?: RegisterProviderOptions;
+    };
 
 export interface ConsoleProviderOptions {
   enableColors?: boolean;
   redactKeys?: string[];
   debug?: boolean;
+  forceLogMetrics?: boolean;
+  forceLogTraces?: boolean;
 }
 
 export interface FirebaseProviderOptions {
   collection?: string;
   app?: unknown;
-  transform?(payload: LogEvent | MetricEvent): Record<string, unknown>;
+  transform?(payload: LogEvent | MetricEvent | TraceEvent): Record<string, unknown>;
   debug?: boolean;
+  forceLogMetrics?: boolean;
+  forceLogTraces?: boolean;
 }
 
 export interface SentryProviderOptions {
@@ -187,6 +250,8 @@ export interface SentryProviderOptions {
   release?: string;
   attachStacktrace?: boolean;
   debug?: boolean;
+  forceLogMetrics?: boolean;
+  forceLogTraces?: boolean;
 }
 
 export interface DatadogProviderOptions {
@@ -206,6 +271,8 @@ export interface DatadogProviderOptions {
   // Server-side tunneling options
   tunnelRum?: boolean; // Enable server-side tunneling of RUM data
   rumTunnelEndpoint?: string; // Server endpoint to receive RUM data
+  forceLogMetrics?: boolean;
+  forceLogTraces?: boolean;
 }
 
 export interface NewRelicProviderOptions {
@@ -225,6 +292,8 @@ export interface NewRelicProviderOptions {
   agentID?: string;
   applicationID?: string;
   debug?: boolean;
+  forceLogMetrics?: boolean;
+  forceLogTraces?: boolean;
 }
 
 export interface HttpProviderOptions {
@@ -233,7 +302,7 @@ export interface HttpProviderOptions {
   headers?: Record<string, string>;
   batchSize?: number;
   flushIntervalMs?: number;
-  transform?(payload: LogEvent | MetricEvent): Record<string, unknown>;
+  transform?(payload: LogEvent | MetricEvent | TraceEvent): Record<string, unknown>;
   onError?(error: unknown): void;
   debug?: boolean;
 }

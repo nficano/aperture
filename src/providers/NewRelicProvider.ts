@@ -4,6 +4,7 @@ import type {
   LogEvent,
   MetricEvent,
   NewRelicProviderOptions,
+  TraceEvent,
 } from "../types/index.js";
 
 export type { NewRelicProviderOptions } from "../types/index.js";
@@ -36,7 +37,10 @@ export class NewRelicProvider implements ApertureProvider {
       batchSize: options.batchSize,
       flushIntervalMs: options.flushIntervalMs,
       transform: (event) =>
-        NewRelicProvider.transformLog(event as LogEvent, options),
+        NewRelicProvider.transformLog(
+          event as LogEvent | TraceEvent,
+          options,
+        ),
       debug,
     });
 
@@ -75,6 +79,10 @@ export class NewRelicProvider implements ApertureProvider {
     this.metricTransport.metric(event);
   }
 
+  trace(event: TraceEvent): void {
+    this.logTransport.trace(event);
+  }
+
   /**
    * Flushes both log and metric transports.
    * @returns {Promise<void>} Resolves when both transports are flushed.
@@ -104,28 +112,57 @@ export class NewRelicProvider implements ApertureProvider {
    * @returns {Record<string, unknown>} New Relic-compatible log payload.
    */
   private static transformLog(
-    event: LogEvent,
+    event: LogEvent | TraceEvent,
     options: NewRelicProviderOptions
   ): Record<string, unknown> {
-    const timestamp = NewRelicProvider.normalizeTimestamp(event.timestamp);
+    if ("traceId" in event) {
+      const timestamp = NewRelicProvider.normalizeTimestamp(
+        event.endTime ?? event.startTime,
+      );
+      const attributes = NewRelicProvider.buildAttributes(options, {
+        domain: event.domain,
+        impact: event.impact,
+        tags: event.tags,
+        context: {
+          ...event.context,
+          traceId: event.traceId,
+          spanId: event.spanId,
+          parentSpanId: event.parentSpanId,
+          status: event.status,
+          attributes: event.attributes,
+        },
+        instrumentation: event.instrumentation,
+      });
+
+      attributes["log.level"] = event.status === "error" ? "error" : "info";
+
+      return {
+        message: `trace:${event.name}`,
+        attributes,
+        ...(timestamp !== undefined && timestamp !== null ? { timestamp } : {}),
+      };
+    }
+
+    const logEvent = event as LogEvent;
+    const timestamp = NewRelicProvider.normalizeTimestamp(logEvent.timestamp);
     const attributes = NewRelicProvider.buildAttributes(options, {
-      domain: event.domain,
-      impact: event.impact,
-      tags: event.tags,
-      context: event.context,
-      instrumentation: event.instrumentation,
-      runtime: event.runtime,
+      domain: logEvent.domain,
+      impact: logEvent.impact,
+      tags: logEvent.tags,
+      context: logEvent.context,
+      instrumentation: logEvent.instrumentation,
+      runtime: logEvent.runtime,
     });
 
-    attributes["log.level"] = event.level;
+    attributes["log.level"] = logEvent.level;
 
-    if (event.error) {
-      attributes["error.message"] = event.error.message;
-      attributes["error.stack"] = event.error.stack;
+    if (logEvent.error) {
+      attributes["error.message"] = logEvent.error.message;
+      attributes["error.stack"] = logEvent.error.stack;
     }
 
     return {
-      message: event.message,
+      message: logEvent.message,
       attributes,
       ...(timestamp !== undefined && timestamp !== null ? { timestamp } : {}),
     };

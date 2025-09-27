@@ -4,6 +4,7 @@ import type {
   MetricEvent,
   ProviderContext,
   SentryProviderOptions,
+  TraceEvent,
 } from "../types/index.js";
 
 type Logger = {
@@ -118,6 +119,53 @@ export class SentryProvider implements ApertureProvider {
         unit: event.unit,
         instrumentation: event.instrumentation,
       },
+    });
+  }
+
+  /**
+   * Sends a trace event to Sentry by capturing a transaction event.
+   * @param {TraceEvent} event - Trace event to forward.
+   * @returns {void}
+   */
+  trace(event: TraceEvent): void {
+    if (!this.sentry) return;
+
+    const startTimestamp =
+      event.startTime instanceof Date
+        ? event.startTime.getTime() / 1000
+        : Date.now() / 1000;
+    const endTimestamp =
+      event.endTime instanceof Date
+        ? event.endTime.getTime() / 1000
+        : undefined;
+
+    const contexts = {
+      trace: {
+        trace_id: event.traceId,
+        span_id: event.spanId,
+        parent_span_id: event.parentSpanId,
+        status: event.status,
+      },
+      data: {
+        attributes: event.attributes,
+        context: event.context,
+      },
+      instrumentation: event.instrumentation,
+    } as Record<string, unknown>;
+
+    const tags = {
+      ...event.tags,
+      ...(event.domain ? { domain: event.domain } : {}),
+      ...(event.impact ? { impact: event.impact } : {}),
+    };
+
+    this.sentry.captureEvent({
+      type: "transaction",
+      transaction: event.name,
+      contexts,
+      tags,
+      start_timestamp: startTimestamp,
+      timestamp: endTimestamp ?? startTimestamp,
     });
   }
 

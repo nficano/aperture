@@ -3,6 +3,7 @@ import type {
   FirebaseProviderOptions,
   LogEvent,
   MetricEvent,
+  TraceEvent,
 } from "../types/index.js";
 import type { FirebaseAdmin } from "firebase-admin";
 
@@ -97,6 +98,18 @@ export class FirebaseProvider implements ApertureProvider {
   }
 
   /**
+   * Writes a trace event document to Firestore.
+   * @param {TraceEvent} event - Trace event to persist.
+   * @returns {Promise<void>} Resolves when the write has completed or provider disabled.
+   */
+  async trace(event: TraceEvent): Promise<void> {
+    if (!this.initialized || !this.firestore) return;
+    const collection = this.options.collection ?? "aperture_traces";
+    const payload = this.options.transform?.(event) ?? this.serialize(event);
+    await this.firestore.collection(collection).add(payload);
+  }
+
+  /**
    * Flush lifecycle hook; Firestore writes are already committed.
    * @returns {void}
    */
@@ -133,13 +146,32 @@ export class FirebaseProvider implements ApertureProvider {
    * @param {LogEvent | MetricEvent} payload - Event to serialize.
    * @returns {Record<string, unknown>} Serialized payload with ISO timestamp.
    */
-  private serialize(payload: LogEvent | MetricEvent): Record<string, unknown> {
-    return {
+  private serialize(
+    payload: LogEvent | MetricEvent | TraceEvent,
+  ): Record<string, unknown> {
+    const base: Record<string, unknown> = {
       ...payload,
-      timestamp:
+    };
+
+    if ("timestamp" in payload) {
+      base.timestamp =
         payload.timestamp instanceof Date
           ? payload.timestamp.toISOString()
-          : payload.timestamp,
-    };
+          : payload.timestamp;
+    }
+
+    if ("startTime" in payload) {
+      base.startTime = payload.startTime instanceof Date
+        ? payload.startTime.toISOString()
+        : payload.startTime;
+    }
+
+    if ("endTime" in payload && payload.endTime) {
+      base.endTime = payload.endTime instanceof Date
+        ? payload.endTime.toISOString()
+        : payload.endTime;
+    }
+
+    return base;
   }
 }

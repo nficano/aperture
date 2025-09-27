@@ -4,6 +4,7 @@ import type {
   LogEvent,
   MetricEvent,
   ProviderContext,
+  TraceEvent,
 } from "../types/index.js";
 
 type ConsoleLike = {
@@ -182,6 +183,66 @@ export class ConsoleProvider implements ApertureProvider {
     if (event.tags && Object.keys(event.tags).length > 0) {
       parts.push(
         `tags=${renderValue(event.tags, this.options.enableColors !== false)}`,
+      );
+    }
+
+    consoleOutput.log(parts.join(" | "));
+  }
+
+  /**
+   * Writes a trace event to the console with trace-specific formatting.
+   * @param {TraceEvent} event - Trace event to render.
+   * @returns {void}
+   */
+  trace(event: TraceEvent): void {
+    if (this.options.debug) {
+      consoleOutput.log(`[console] Debug - Trace event received:`, {
+        name: event.name,
+        traceId: event.traceId,
+        spanId: event.spanId,
+        parentSpanId: event.parentSpanId,
+        status: event.status,
+        attributes: event.attributes,
+      });
+    }
+
+    if (this.environment === "production") {
+      const payload = {
+        ...event,
+        startTime:
+          event.startTime instanceof Date
+            ? event.startTime.toISOString()
+            : event.startTime,
+        endTime:
+          event.endTime instanceof Date
+            ? event.endTime.toISOString()
+            : event.endTime,
+        type: "trace",
+      };
+      consoleOutput.log(JSON.stringify(this.redact(payload)));
+      return;
+    }
+
+    const color = this.options.enableColors === false ? "" : "\u001B[35m";
+    const reset = color ? RESET : "";
+    const parts: string[] = [];
+
+    parts.push(`${color}[TRACE]${reset}`, event.name, `traceId=${event.traceId}`);
+
+    if (event.spanId) parts.push(`spanId=${event.spanId}`);
+    if (event.parentSpanId) parts.push(`parent=${event.parentSpanId}`);
+    if (event.status) parts.push(`status=${event.status}`);
+    if (event.tags && Object.keys(event.tags).length > 0) {
+      parts.push(
+        `tags=${renderValue(event.tags, this.options.enableColors !== false)}`,
+      );
+    }
+    if (event.attributes && Object.keys(event.attributes).length > 0) {
+      parts.push(
+        `attrs=${renderValue(
+          event.attributes,
+          this.options.enableColors !== false,
+        )}`,
       );
     }
 
