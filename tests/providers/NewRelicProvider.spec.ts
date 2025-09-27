@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createLogEvent, createMetricEvent } from '../_helpers.js';
+import { createLogEvent, createMetricEvent, fixedDate } from '../_helpers.js';
 
 const modulePath = '../../src/providers/NewRelicProvider.js';
 
@@ -28,17 +28,20 @@ describe('NewRelicProvider', () => {
     await provider.flush();
 
     // Assert
-    const body = fetchMock.mock.calls[0]?.[1]?.body as string;
+    const [url, request] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('https://log-api.newrelic.com/log/v1');
+
+    const body = request?.body as string;
     const payload = JSON.parse(body)[0];
-    expect(payload.service).toBe('checkout');
-    expect(payload.environment).toBe('staging');
-    expect(payload.level).toBe('info');
     expect(payload.message).toBe('test-message');
-    expect(payload.context).toEqual({ stage: 'beta' });
-    expect(payload.error).toEqual({
-      message: 'boom',
-      stack: error.stack,
-    });
+    expect(payload.timestamp).toBe(fixedDate.getTime());
+    expect(payload.attributes['service.name']).toBe('checkout');
+    expect(payload.attributes.environment).toBe('staging');
+    expect(payload.attributes['log.level']).toBe('info');
+    expect(payload.attributes.context).toEqual({ stage: 'beta' });
+    expect(payload.attributes.attempt).toBe('1');
+    expect(payload.attributes['error.message']).toBe('boom');
+    expect(payload.attributes['error.stack']).toBe(error.stack);
   });
 
   it('should transform metric events when sending metrics', async () => {
@@ -58,12 +61,18 @@ describe('NewRelicProvider', () => {
     await provider.flush();
 
     // Assert
-    const body = fetchMock.mock.calls[0]?.[1]?.body as string;
+    const [url, request] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('https://metric-api.newrelic.com/metric/v1');
+
+    const body = request?.body as string;
     const payload = JSON.parse(body)[0];
-    expect(payload.type).toBe('metric');
-    expect(payload.name).toBe('test-metric');
-    expect(payload.value).toBe(12);
-    expect(payload.unit).toBe('ms');
+    const metric = payload.metrics[0];
+    expect(metric.name).toBe('test-metric');
+    expect(metric.type).toBe('gauge');
+    expect(metric.value).toBe(12);
+    expect(metric.attributes['service.name']).toBe('checkout');
+    expect(metric.attributes.environment).toBe('staging');
+    expect(metric.attributes.unit).toBe('ms');
   });
 
   it('should omit error field when no error present and keep non-Date timestamp', async () => {
@@ -88,6 +97,6 @@ describe('NewRelicProvider', () => {
     const body = fetchMock.mock.calls[0]?.[1]?.body as string;
     const payload = JSON.parse(body)[0];
     expect(payload.timestamp).toBe(ts);
-    expect('error' in payload).toBe(false);
+    expect(payload.attributes['error.message']).toBeUndefined();
   });
 });

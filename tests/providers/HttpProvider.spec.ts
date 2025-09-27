@@ -35,6 +35,39 @@ describe('HttpProvider', () => {
     });
   });
 
+  it('should flush automatically on next microtask when no interval is configured', async () => {
+    // Arrange
+    const fetchMock = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('fetch', fetchMock as unknown);
+    vi.resetModules();
+    const { HttpProvider } = await import(modulePath);
+    const provider = new HttpProvider({
+      name: 'http',
+      endpoint: 'https://example.test/logs',
+      batchSize: 5,
+    });
+
+    const logEvent = createLogEvent();
+
+    // Act
+    provider.log(logEvent);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Assert
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://example.test/logs',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    const [, options] = fetchMock.mock.calls[0] ?? [];
+    const body = JSON.parse((options as { body: string }).body);
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({ message: logEvent.message });
+  });
+
   it('should use transform when provided and send transformed payload', async () => {
     // Arrange
     const fetchMock = vi.fn().mockResolvedValue(undefined);
