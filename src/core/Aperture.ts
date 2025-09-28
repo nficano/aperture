@@ -42,7 +42,7 @@ const diagnosticConsole =
   } satisfies ConsoleLike);
 
 const detectChannel = (): ProviderChannel =>
-  (typeof (globalThis as { window?: unknown }).window === "undefined"
+  ((globalThis as { window?: unknown }).window === undefined
     ? "server"
     : "client");
 
@@ -149,8 +149,8 @@ export class Aperture {
 
     const provider = wrapped.provider;
     const resolvedOptions: RegisterProviderOptions = {
-      ...(wrapped.options ?? {}),
-      ...(inlineOptions ?? {}),
+      ...wrapped.options,
+      ...inlineOptions,
     };
 
     const targetChannel = resolvedOptions.channel ?? this.channel;

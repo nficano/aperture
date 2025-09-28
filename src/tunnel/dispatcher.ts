@@ -37,7 +37,7 @@ const buildContext = (
 
   return {
     ...context,
-    ...(extra ?? {}),
+    ...extra,
   };
 };
 

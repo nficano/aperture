@@ -1,4 +1,5 @@
 import { HttpProvider } from "./HttpProvider.js";
+import { DEFAULT_DATADOG_REGION, resolveDatadogRegion } from "./regions.js";
 import type {
   DatadogProviderOptions,
   HttpProviderOptions,
@@ -13,7 +14,6 @@ export type { DatadogProviderOptions } from "../types/index.js";
 
 /**
  * Adapts Aperture events to Datadog's log intake API using the HTTP provider.
- * Also provides browser RUM initialization for client-side monitoring.
  */
 export class DatadogProvider extends HttpProvider {
   /**
@@ -21,107 +21,33 @@ export class DatadogProvider extends HttpProvider {
    * @param {DatadogProviderOptions} options - API key, service metadata, and batching configuration.
    */
   constructor(options: DatadogProviderOptions) {
+    const region = options.region?.toLowerCase();
+    const regionConfig =
+      resolveDatadogRegion(region) ??
+      resolveDatadogRegion(DEFAULT_DATADOG_REGION);
+    const resolvedOptions: DatadogProviderOptions = {
+      ...options,
+      ...(region ? { region } : {}),
+    };
+
     const headers = {
       "content-type": "application/json",
-      "dd-api-key": options.apiKey,
+      "dd-api-key": resolvedOptions.apiKey,
     };
 
     const httpOptions: HttpProviderOptions = {
       name: "datadog",
       endpoint:
-        options.endpoint ??
+        resolvedOptions.endpoint ?? regionConfig?.log ??
         "https://http-intake.logs.datadoghq.com/api/v2/logs",
       headers,
-      batchSize: options.batchSize,
-      flushIntervalMs: options.flushIntervalMs,
-      transform: (event) => DatadogProvider.transform(event, options),
-      debug: options.debug,
+      batchSize: resolvedOptions.batchSize,
+      flushIntervalMs: resolvedOptions.flushIntervalMs,
+      transform: (event) => DatadogProvider.transform(event, resolvedOptions),
+      debug: resolvedOptions.debug,
     };
 
     super(httpOptions);
-  }
-
-  /**
-   * Generates the browser RUM initialization script for client-side monitoring.
-   * @param {DatadogProviderOptions} options - Provider options containing RUM credentials.
-   * @returns {string} HTML script tag for Datadog RUM initialization.
-   */
-  static generateBrowserRumScript(options: DatadogProviderOptions): string {
-    if (!options.rumApplicationId || !options.rumClientToken) {
-      throw new Error(
-        "Browser RUM requires rumApplicationId and rumClientToken"
-      );
-    }
-
-    const site = options.site || "datadoghq.com";
-    const env = options.environment || "production";
-    const service = options.service;
-    const tunnelEndpoint = options.rumTunnelEndpoint || "/api/datadog/rum";
-
-    if (options.debug) {
-      // eslint-disable-next-line no-console
-      console.debug("[datadog] Generating browser RUM script with config:", {
-        applicationId: options.rumApplicationId,
-        clientToken: options.rumClientToken?.slice(0, 8) + "...",
-        site,
-        service,
-        environment: env,
-        tunnelRum: options.tunnelRum,
-        tunnelEndpoint,
-      });
-    }
-
-    return options.tunnelRum
-      ? // Server-side tunneling: Send RUM data to our server endpoint
-        `
-<script>
-(function(h,o,u,n,d) {
-  h=h[d]=h[d]||{q:[],onReady:function(c){h.q.push(c)}}
-  d=o.createElement(u);d.async=1;d.src=n
-  n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
-})(window,document,'script','https://www.${site}/browser-sdk/v3/datadog-rum.js','DD_RUM')
-DD_RUM.onReady(function() {
-  DD_RUM.init({
-    applicationId: '${options.rumApplicationId}',
-    clientToken: '${options.rumClientToken}',
-    site: '${site}',
-    service: '${service}',
-    env: '${env}',
-    version: '1.0.0',
-    sampleRate: 100,
-    trackInteractions: true,
-    trackResources: true,
-    trackLongTasks: true,
-    defaultPrivacyLevel: 'mask-user-input',
-    // Override the default intake endpoint to tunnel through our server
-    intake: '${tunnelEndpoint}'
-  });
-})
-</script>`
-      : // Direct connection: Send RUM data directly to Datadog
-        `
-<script>
-(function(h,o,u,n,d) {
-  h=h[d]=h[d]||{q:[],onReady:function(c){h.q.push(c)}}
-  d=o.createElement(u);d.async=1;d.src=n
-  n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
-})(window,document,'script','https://www.${site}/browser-sdk/v3/datadog-rum.js','DD_RUM')
-DD_RUM.onReady(function() {
-  DD_RUM.init({
-    applicationId: '${options.rumApplicationId}',
-    clientToken: '${options.rumClientToken}',
-    site: '${site}',
-    service: '${service}',
-    env: '${env}',
-    version: '1.0.0',
-    sampleRate: 100,
-    trackInteractions: true,
-    trackResources: true,
-    trackLongTasks: true,
-    defaultPrivacyLevel: 'mask-user-input'
-  });
-})
-</script>`;
   }
 
   /**

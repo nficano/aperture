@@ -56,6 +56,34 @@ export default defineNuxtModule<ApertureNuxtOptions>({
     const runtimeConfig = nuxt.options.runtimeConfig;
     const tunnelPath = options.tunnel?.path ?? "/api/aperture";
 
+    const providers = options.providers ?? {};
+    const publicProviders: Record<string, unknown> = {};
+    if (Object.prototype.hasOwnProperty.call(providers, "console")) {
+      publicProviders.console = providers.console;
+    }
+    if (Object.prototype.hasOwnProperty.call(providers, "consola")) {
+      publicProviders.consola = providers.consola;
+    }
+
+    const tunnelConfig = {
+      path: options.tunnel?.path ?? "/api/aperture",
+      jwtSecret: options.tunnel?.jwtSecret,
+      csrfHeader: options.tunnel?.csrfHeader,
+      sampling: options.tunnel?.sampling,
+      rateLimitPerMin: options.tunnel?.rateLimitPerMin,
+      debug: options.tunnel?.debug,
+    } satisfies Record<string, unknown>;
+
+    const publicTunnelConfig = Object.fromEntries(
+      Object.entries({
+        path: tunnelConfig.path,
+        csrfHeader: tunnelConfig.csrfHeader,
+        sampling: tunnelConfig.sampling,
+        rateLimitPerMin: tunnelConfig.rateLimitPerMin,
+        debug: tunnelConfig.debug,
+      }).filter(([, value]) => value !== undefined)
+    );
+
     runtimeConfig.aperture = {
       ...runtimeConfig.aperture,
       environment: options.environment,
@@ -63,15 +91,25 @@ export default defineNuxtModule<ApertureNuxtOptions>({
       release: options.release,
       runtime: options.runtime,
       domains: options.domains ?? [],
-      providers: options.providers ?? {},
-      tunnel: {
-        path: options.tunnel?.path ?? "/api/aperture",
-        jwtSecret: options.tunnel?.jwtSecret,
-        csrfHeader: options.tunnel?.csrfHeader,
-        sampling: options.tunnel?.sampling,
-        rateLimitPerMin: options.tunnel?.rateLimitPerMin,
-        debug: options.tunnel?.debug,
-      },
+      providers,
+      tunnel: tunnelConfig,
+    };
+
+    runtimeConfig.public = runtimeConfig.public || {};
+    const existingPublicAperture =
+      typeof runtimeConfig.public.aperture === "object" &&
+      runtimeConfig.public.aperture !== null
+        ? runtimeConfig.public.aperture
+        : {};
+    runtimeConfig.public.aperture = {
+      ...existingPublicAperture,
+      environment: options.environment,
+      defaultTags: options.defaultTags,
+      release: options.release,
+      runtime: options.runtime,
+      domains: options.domains ?? [],
+      providers: publicProviders,
+      tunnel: publicTunnelConfig,
     };
 
     nuxt.hook(
@@ -84,6 +122,17 @@ export default defineNuxtModule<ApertureNuxtOptions>({
         nitroConfig.runtimeConfig.aperture = {
           ...nitroConfig.runtimeConfig.aperture,
           ...runtimeConfig.aperture,
+        };
+        nitroConfig.runtimeConfig.public =
+          nitroConfig.runtimeConfig.public || runtimeConfig.public || {};
+        const existingNitroPublicAperture =
+          typeof nitroConfig.runtimeConfig.public.aperture === "object" &&
+          nitroConfig.runtimeConfig.public.aperture !== null
+            ? nitroConfig.runtimeConfig.public.aperture
+            : {};
+        nitroConfig.runtimeConfig.public.aperture = {
+          ...existingNitroPublicAperture,
+          ...runtimeConfig.public.aperture,
         };
       }
     );

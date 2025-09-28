@@ -1,4 +1,5 @@
 import { HttpProvider } from "./HttpProvider.js";
+import { DEFAULT_NEW_RELIC_REGION, resolveNewRelicRegion } from "./regions.js";
 import type {
   ApertureProvider,
   LogEvent,
@@ -23,9 +24,14 @@ export class NewRelicProvider implements ApertureProvider {
    */
   constructor(options: NewRelicProviderOptions) {
     const debug = options.debug ?? false;
+    const region = options.region?.toLowerCase();
+    const regionConfig =
+      resolveNewRelicRegion(region) ??
+      resolveNewRelicRegion(DEFAULT_NEW_RELIC_REGION);
     const logEndpoint =
       options.logEndpoint ??
       options.endpoint ??
+      regionConfig?.log ??
       "https://log-api.newrelic.com/log/v1";
     this.logTransport = new HttpProvider({
       name: "newrelic-log",
@@ -39,13 +45,19 @@ export class NewRelicProvider implements ApertureProvider {
       transform: (event) =>
         NewRelicProvider.transformLog(
           event as LogEvent | TraceEvent,
-          options,
+          {
+            ...options,
+            ...(region ? { region } : {}),
+            logEndpoint,
+          },
         ),
       debug,
     });
 
     const metricEndpoint =
-      options.metricEndpoint ?? "https://metric-api.newrelic.com/metric/v1";
+      options.metricEndpoint ??
+      regionConfig?.metric ??
+      "https://metric-api.newrelic.com/metric/v1";
     this.metricTransport = new HttpProvider({
       name: "newrelic-metric",
       endpoint: metricEndpoint,
@@ -56,7 +68,15 @@ export class NewRelicProvider implements ApertureProvider {
       batchSize: options.batchSize,
       flushIntervalMs: options.flushIntervalMs,
       transform: (event) =>
-        NewRelicProvider.transformMetric(event as MetricEvent, options),
+        NewRelicProvider.transformMetric(
+          event as MetricEvent,
+          {
+            ...options,
+            ...(region ? { region } : {}),
+            logEndpoint,
+            metricEndpoint,
+          },
+        ),
       debug,
     });
   }

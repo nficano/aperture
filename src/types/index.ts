@@ -1,3 +1,15 @@
+import type { DatadogRegion, NewRelicRegion } from "../providers/regions.js";
+
+export {
+  datadogRegionConfigMap,
+  DEFAULT_DATADOG_REGION,
+  newRelicRegionConfigMap,
+  DEFAULT_NEW_RELIC_REGION,
+  resolveDatadogRegion,
+  resolveNewRelicRegion,
+} from "../providers/regions.js";
+export type { DatadogRegion, NewRelicRegion } from "../providers/regions.js";
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export type ImpactType =
@@ -233,10 +245,26 @@ export interface ConsoleProviderOptions {
   forceLogTraces?: boolean;
 }
 
+export interface ConsolaProviderOptions {
+  tag?: string;
+  level?: number;
+  fancy?: boolean;
+  reporters?: unknown[];
+  defaults?: Record<string, unknown>;
+  createOptions?: Record<string, unknown>;
+  prettyJson?: boolean;
+  redactKeys?: string[];
+  debug?: boolean;
+  forceLogMetrics?: boolean;
+  forceLogTraces?: boolean;
+}
+
 export interface FirebaseProviderOptions {
   collection?: string;
   app?: unknown;
-  transform?(payload: LogEvent | MetricEvent | TraceEvent): Record<string, unknown>;
+  transform?(
+    payload: LogEvent | MetricEvent | TraceEvent
+  ): Record<string, unknown>;
   debug?: boolean;
   forceLogMetrics?: boolean;
   forceLogTraces?: boolean;
@@ -264,13 +292,13 @@ export interface DatadogProviderOptions {
   batchSize?: number;
   flushIntervalMs?: number;
   // Browser RUM credentials (for client-side monitoring)
-  rumApplicationId?: string;
-  rumClientToken?: string;
-  site?: string; // e.g., 'datadoghq.com', 'datadoghq.eu', etc.
+  rum?: {
+    applicationId: string;
+    clientToken: string;
+  };
+  region?: DatadogRegion;
   debug?: boolean;
   // Server-side tunneling options
-  tunnelRum?: boolean; // Enable server-side tunneling of RUM data
-  rumTunnelEndpoint?: string; // Server endpoint to receive RUM data
   forceLogMetrics?: boolean;
   forceLogTraces?: boolean;
 }
@@ -287,10 +315,12 @@ export interface NewRelicProviderOptions {
   batchSize?: number;
   flushIntervalMs?: number;
   // Browser agent credentials (for client-side monitoring)
+  browserKey?: string;
   accountID?: string;
   trustKey?: string;
   agentID?: string;
   applicationID?: string;
+  region?: NewRelicRegion;
   debug?: boolean;
   forceLogMetrics?: boolean;
   forceLogTraces?: boolean;
@@ -302,13 +332,16 @@ export interface HttpProviderOptions {
   headers?: Record<string, string>;
   batchSize?: number;
   flushIntervalMs?: number;
-  transform?(payload: LogEvent | MetricEvent | TraceEvent): Record<string, unknown>;
+  transform?(
+    payload: LogEvent | MetricEvent | TraceEvent
+  ): Record<string, unknown>;
   onError?(error: unknown): void;
   debug?: boolean;
 }
 
 export interface ApertureNuxtProviderOptions {
   console?: boolean | ConsoleProviderOptions;
+  consola?: boolean | ConsolaProviderOptions;
   firebase?: false | FirebaseProviderOptions;
   sentry?: false | SentryProviderOptions;
   datadog?: false | DatadogProviderOptions;
@@ -327,10 +360,9 @@ export interface ApertureNuxtOptions {
     path?: string; // e.g. "/api/aperture"
     jwtSecret?: string; // HS256 shared secret
     csrfHeader?: string; // header key to require
-    sampling?: Partial<Record<
-      "log" | "error" | "metric" | "trace" | "rum" | "custom",
-      number
-    >>;
+    sampling?: Partial<
+      Record<"log" | "error" | "metric" | "trace" | "rum" | "custom", number>
+    >;
     rateLimitPerMin?: number;
     debug?: boolean;
   };

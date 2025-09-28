@@ -5,6 +5,7 @@ export * from "./core/domains/DomainRegistry.js";
 export * from "./core/logger/Logger.js";
 export * from "./core/instruments/Instrumentation.js";
 export * from "./providers/ConsoleProvider.js";
+export * from "./providers/ConsolaProvider.js";
 export * from "./providers/FirebaseProvider.js";
 export * from "./providers/SentryProvider.js";
 export * from "./providers/HttpProvider.js";

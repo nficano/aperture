@@ -50,6 +50,16 @@ export const PROVIDER_MANIFEST: Record<string, ProviderManifestEntry> = {
       forceLogTraces: true,
     },
   },
+  consola: {
+    capabilities: {
+      client: CONSOLE_SUPPORT,
+      server: CONSOLE_SUPPORT,
+    },
+    defaultFallbacks: {
+      forceLogMetrics: true,
+      forceLogTraces: true,
+    },
+  },
   datadog: {
     capabilities: {
       client: FULL,

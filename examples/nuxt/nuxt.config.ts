@@ -6,33 +6,33 @@ export default defineNuxtConfig({
     "../../src/integrations/nuxt/module",
   ],
   aperture: {
-    environment: process.env.NODE_ENV as any,
-    defaultTags: { service: "nuxt-example" },
+    environment: import.meta.env.NODE_ENV as any,
+    defaultTags: { service: "nuxt-app" },
     domains: [
       { name: "auth", defaultImpact: "reliability" },
       { name: "content", defaultImpact: "engagement" },
     ],
     providers: {
-      // Console provider is enabled by default; keeping explicit for clarity
-      console: { enableColors: true },
+      consola: {
+        debug: true,
+        fancy: true,
+        prettyJson: true,
+      },
       datadog: {
-        // TODO: add region support
         debug: true,
         apiKey: "",
-        service: "nuxt-example",
-        // TODO: Update the interface to:
-        // rum: {
-        //   applicationId: "",
-        //   clientToken: "",
-        // }
-        // site: 'datadoghq.com',
+        service: "nuxt-app",
+        region: "us3",
+        rum: {
+          applicationId: "",
+          clientToken: "",
+        },
       },
       newRelic: {
-        // TODO: add region support
         licenseKey: "",
-        // TODO: implement browser api for the client/tunnel
-        //browserKey: "",
+        browserKey: "",
         service: "nuxt-app",
+        region: "us",
         accountID: "",
         trustKey: "",
         agentID: "",

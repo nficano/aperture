@@ -2,13 +2,21 @@ import { defineNuxtPlugin } from "#app";
 import { useRuntimeConfig } from "#imports";
 import { Aperture } from "../../../core/Aperture.js";
 import { ConsoleProvider } from "../../../providers/ConsoleProvider.js";
+import { ConsolaProvider } from "../../../providers/ConsolaProvider.js";
 import { FirebaseProvider } from "../../../providers/FirebaseProvider.js";
 import { SentryProvider } from "../../../providers/SentryProvider.js";
 import { DatadogProvider } from "../../../providers/DatadogProvider.js";
 import { NewRelicProvider } from "../../../providers/NewRelicProvider.js";
+import {
+  DEFAULT_DATADOG_REGION,
+  DEFAULT_NEW_RELIC_REGION,
+  resolveDatadogRegion,
+  resolveNewRelicRegion,
+} from "../../../providers/regions.js";
 import { getProviderManifest } from "../../../providers/capabilities.js";
 import type {
   ApertureProvider,
+  ConsolaProviderOptions,
   ConsoleProviderOptions,
   ProviderFallbackConfig,
 } from "../../../types/index.js";
@@ -39,8 +47,8 @@ const mergeFallbacks = (
   overrides?: ProviderFallbackConfig,
 ): ProviderFallbackConfig | undefined => {
   const merged = {
-    ...(base ?? {}),
-    ...(overrides ?? {}),
+    ...base,
+    ...overrides,
   } satisfies ProviderFallbackConfig;
 
   const entries = Object.entries(merged).filter(([, value]) => value !== undefined);
@@ -120,6 +128,23 @@ function resolveProviders(
     );
   }
 
+  const consolaConfig = configured.consola;
+  if (isOptionEnabled(consolaConfig) && !existing.has("consola")) {
+    const resolvedConsolaOptions =
+      consolaConfig === true || consolaConfig === undefined ? {} : consolaConfig;
+    const fallbackOverrides =
+      typeof resolvedConsolaOptions === "object"
+        ? extractFallbackOverrides(resolvedConsolaOptions)
+        : undefined;
+    registerProviderWithManifest(
+      aperture,
+      "consola",
+      new ConsolaProvider(resolvedConsolaOptions as ConsolaProviderOptions),
+      channel,
+      fallbackOverrides,
+    );
+  }
+
   // Providers with server-side SDKs only
   if (!isServer) return;
 
@@ -150,10 +175,32 @@ function resolveProviders(
   const datadogConfig = configured.datadog;
   if (isOptionEnabled(datadogConfig) && !existing.has("datadog")) {
     const runtimeConfig = useRuntimeConfig() as any;
+    const configObject = datadogConfig === true ? {} : datadogConfig;
+    const configuredRegion =
+      typeof configObject.region === "string"
+        ? configObject.region.toLowerCase()
+        : undefined;
+    const envRegion =
+      (runtimeConfig.datadogRegion ||
+        runtimeConfig.public?.datadogRegion ||
+        env.DATADOG_REGION ||
+        env.DD_REGION ||
+        "") as string;
+    const normalizedEnvRegion = envRegion ? envRegion.toLowerCase() : undefined;
+    const resolvedRegion =
+      configuredRegion ?? normalizedEnvRegion ?? DEFAULT_DATADOG_REGION;
+    const regionConfig =
+      resolveDatadogRegion(resolvedRegion) ??
+      resolveDatadogRegion(DEFAULT_DATADOG_REGION);
+    const endpoint =
+      configObject.endpoint ??
+      regionConfig?.log ??
+      undefined;
     const enrichedConfig = {
-      ...datadogConfig,
-      apiKey: runtimeConfig.datadogApiKey || datadogConfig.apiKey,
-      site: runtimeConfig.public?.datadogSite || datadogConfig.site,
+      ...configObject,
+      apiKey: runtimeConfig.datadogApiKey || configObject.apiKey,
+      region: resolvedRegion,
+      ...(endpoint ? { endpoint } : {}),
     };
     const fallbackOverrides = extractFallbackOverrides(datadogConfig);
     registerProviderWithManifest(
@@ -168,9 +215,40 @@ function resolveProviders(
   const newRelicConfig = configured.newRelic;
   if (isOptionEnabled(newRelicConfig) && !existing.has("newrelic")) {
     const runtimeConfig = useRuntimeConfig() as any;
+    const configObject = newRelicConfig === true ? {} : newRelicConfig;
+    const configuredRegion =
+      typeof configObject.region === "string"
+        ? configObject.region.toLowerCase()
+        : undefined;
+    const envRegion =
+      (runtimeConfig.newRelicRegion ||
+        runtimeConfig.public?.newRelicRegion ||
+        env.NEW_RELIC_REGION ||
+        env.NR_REGION ||
+        env.DATADOG_REGION ||
+        env.DD_REGION ||
+        "") as string;
+    const normalizedEnvRegion = envRegion ? envRegion.toLowerCase() : undefined;
+    const resolvedRegion =
+      configuredRegion ?? normalizedEnvRegion ?? DEFAULT_NEW_RELIC_REGION;
+    const regionConfig =
+      resolveNewRelicRegion(resolvedRegion) ??
+      resolveNewRelicRegion(DEFAULT_NEW_RELIC_REGION);
+    const logEndpoint =
+      configObject.logEndpoint ??
+      configObject.endpoint ??
+      regionConfig?.log ??
+      undefined;
+    const metricEndpoint =
+      configObject.metricEndpoint ??
+      regionConfig?.metric ??
+      undefined;
     const enrichedConfig = {
-      ...newRelicConfig,
-      licenseKey: runtimeConfig.newRelicLicenseKey || newRelicConfig.licenseKey,
+      ...configObject,
+      licenseKey: runtimeConfig.newRelicLicenseKey || configObject.licenseKey,
+      region: resolvedRegion,
+      ...(logEndpoint ? { logEndpoint } : {}),
+      ...(metricEndpoint ? { metricEndpoint } : {}),
     };
     const fallbackOverrides = extractFallbackOverrides(newRelicConfig);
     registerProviderWithManifest(
@@ -190,7 +268,10 @@ export default defineNuxtPlugin(
    */
   () => {
     const runtimeConfig = useRuntimeConfig();
-    const apertureConfig = (runtimeConfig as any).aperture ?? {};
+    const apertureConfig =
+      (runtimeConfig as any).aperture ??
+      (runtimeConfig as any).public?.aperture ??
+      {};
     const rawEnvironment =
       apertureConfig.environment ?? env.NODE_ENV ?? "development";
     const environment = rawEnvironment as "development" | "production" | "test";

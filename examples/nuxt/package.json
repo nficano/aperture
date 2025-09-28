@@ -15,6 +15,7 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "consola": "^3.4.2",
     "h3": "^1.15.4"
   }
 }
